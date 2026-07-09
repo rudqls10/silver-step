@@ -1,0 +1,680 @@
+/*
+ * Silver Step - 시니어 퍼스트 스타일시트
+ * 원칙: 3m 거리 가독성, 고대비, 큰 폰트, 프리미엄 느낌
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+/* ========================
+   Design Tokens
+   ======================== */
+:root {
+  /* Colors - High Contrast Dark Theme */
+  --bg-primary: #0a0e17;
+  --bg-secondary: #141b2d;
+  --bg-card: rgba(20, 27, 45, 0.85);
+  --bg-glass: rgba(255, 255, 255, 0.05);
+  --text-primary: #ffffff;
+  --text-secondary: #a0aec0;
+  --accent-green: #00e676;
+  --accent-green-dim: rgba(0, 230, 118, 0.15);
+  --accent-blue: #448aff;
+  --accent-orange: #ff9100;
+  --accent-red: #ff5252;
+  --accent-purple: #b388ff;
+  --gradient-main: linear-gradient(135deg, #00e676 0%, #448aff 100%);
+  --gradient-warm: linear-gradient(135deg, #ff9100 0%, #ff5252 100%);
+  --shadow-glow-green: 0 0 40px rgba(0, 230, 118, 0.25);
+  --shadow-glow-blue: 0 0 40px rgba(68, 138, 255, 0.25);
+
+  /* Typography - Senior First (3m 거리 가독성) */
+  --font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-size-xs: 14px;
+  --font-size-sm: 18px;
+  --font-size-md: 24px;
+  --font-size-lg: 32px;
+  --font-size-xl: 48px;
+  --font-size-xxl: 72px;
+  --font-size-count: 140px;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+
+  /* Borders */
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-full: 50%;
+  --border-glass: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ========================
+   Reset & Base
+   ======================== */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========================
+   App Container
+   ======================== */
+.app-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ========================
+   Camera & Canvas
+   ======================== */
+.camera-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  background: var(--bg-primary);
+}
+
+#camera-video {
+  display: none;
+}
+
+#pose-canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* 거울 모드 */
+}
+
+/* 프라이버시 블러 오버레이 */
+.camera-blur-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.camera-blur-overlay.active {
+  opacity: 1;
+}
+
+/* 카메라 비네트 효과 */
+.camera-vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    rgba(10, 14, 23, 0.7) 100%
+  );
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ========================
+   UI Overlay
+   ======================== */
+.ui-overlay {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xl);
+  pointer-events: none;
+}
+
+/* ========================
+   Status Bar (상단)
+   ======================== */
+.status-bar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: var(--bg-card);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: var(--border-glass);
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--accent-green);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.status-dot.warning {
+  background: var(--accent-orange);
+}
+
+.status-dot.error {
+  background: var(--accent-red);
+}
+
+.status-text {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+/* ========================
+   Count Display (중앙)
+   ======================== */
+.count-display {
+  text-align: center;
+  pointer-events: none;
+}
+
+.count-number {
+  font-size: var(--font-size-count);
+  font-weight: 900;
+  background: var(--gradient-main);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  filter: drop-shadow(0 0 40px rgba(0, 230, 118, 0.3));
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.count-number.bump {
+  transform: scale(1.15);
+}
+
+.count-target {
+  font-size: var(--font-size-lg);
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin-top: var(--spacing-xs);
+}
+
+/* ========================
+   Message Display (하단)
+   ======================== */
+.message-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.message-display {
+  background: var(--bg-card);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: var(--border-glass);
+  max-width: 85%;
+  text-align: center;
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.message-text {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+}
+
+/* ========================
+   Start Screen
+   ======================== */
+.start-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xxl);
+  background: var(--bg-primary);
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+.start-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.app-logo {
+  text-align: center;
+}
+
+.app-logo-icon {
+  font-size: 80px;
+  margin-bottom: var(--spacing-md);
+  display: block;
+}
+
+.app-title {
+  font-size: var(--font-size-xl);
+  font-weight: 900;
+  background: var(--gradient-main);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.03em;
+}
+
+.app-subtitle {
+  font-size: var(--font-size-md);
+  color: var(--text-secondary);
+  margin-top: var(--spacing-sm);
+  font-weight: 400;
+}
+
+.start-button {
+  pointer-events: auto;
+  background: var(--gradient-main);
+  border: none;
+  color: var(--bg-primary);
+  font-size: var(--font-size-xl);
+  font-weight: 900;
+  font-family: var(--font-family);
+  padding: var(--spacing-lg) var(--spacing-xxl);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  min-width: 320px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: var(--shadow-glow-green);
+  letter-spacing: -0.02em;
+  position: relative;
+  overflow: hidden;
+}
+
+.start-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.start-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 60px rgba(0, 230, 118, 0.4);
+}
+
+.start-button:hover::before {
+  left: 100%;
+}
+
+.start-button:active {
+  transform: scale(0.97);
+}
+
+/* ========================
+   Countdown Overlay
+   ======================== */
+.countdown-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 14, 23, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.countdown-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.countdown-number {
+  font-size: 200px;
+  font-weight: 900;
+  color: var(--accent-orange);
+  text-shadow: 0 0 80px rgba(255, 145, 0, 0.5);
+  animation: countPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ========================
+   Progress Bar
+   ======================== */
+.progress-container {
+  width: 85%;
+  max-width: 500px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--gradient-main);
+  border-radius: 4px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 0%;
+  position: relative;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 20px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  filter: blur(4px);
+}
+
+.progress-text {
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-top: var(--spacing-sm);
+}
+
+/* ========================
+   Complete Screen
+   ======================== */
+.complete-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xl);
+  background: var(--bg-primary);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+.complete-screen.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.complete-icon {
+  font-size: 100px;
+  animation: bounceIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.complete-title {
+  font-size: var(--font-size-xl);
+  font-weight: 900;
+  background: var(--gradient-main);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.complete-stats {
+  display: flex;
+  gap: var(--spacing-xl);
+}
+
+.stat-card {
+  background: var(--bg-card);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  border: var(--border-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  min-width: 140px;
+}
+
+.stat-value {
+  font-size: var(--font-size-xxl);
+  font-weight: 900;
+  color: var(--accent-green);
+}
+
+.stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-top: var(--spacing-xs);
+}
+
+.restart-button {
+  pointer-events: auto;
+  background: var(--bg-glass);
+  border: var(--border-glass);
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  font-family: var(--font-family);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.restart-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.03);
+}
+
+/* ========================
+   Debug Panel (테스트용)
+   ======================== */
+.debug-panel {
+  position: fixed;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+  background: rgba(0, 0, 0, 0.85);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  color: var(--accent-green);
+  font-family: 'Courier New', monospace;
+  z-index: 100;
+  min-width: 220px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 230, 118, 0.15);
+  pointer-events: auto;
+}
+
+.debug-panel h3 {
+  color: var(--accent-blue);
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family);
+}
+
+.debug-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  gap: var(--spacing-md);
+}
+
+.debug-label {
+  color: var(--text-secondary);
+}
+
+.debug-value {
+  color: var(--accent-green);
+  font-weight: bold;
+  text-align: right;
+}
+
+.debug-divider {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: var(--spacing-sm) 0;
+}
+
+/* ========================
+   Utility Classes
+   ======================== */
+.hidden {
+  display: none !important;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+/* ========================
+   Animations
+   ======================== */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+@keyframes countPop {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.2); }
+  80% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.fade-in {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+/* ========================
+   Responsive (모바일 우선)
+   ======================== */
+@media (max-width: 768px) {
+  :root {
+    --font-size-count: 100px;
+    --font-size-xxl: 56px;
+    --font-size-xl: 36px;
+    --font-size-lg: 28px;
+  }
+
+  .ui-overlay {
+    padding: var(--spacing-lg);
+  }
+
+  .start-button {
+    min-width: 260px;
+    font-size: var(--font-size-lg);
+  }
+
+  .countdown-number {
+    font-size: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --font-size-count: 80px;
+    --font-size-xxl: 44px;
+    --font-size-xl: 30px;
+  }
+
+  .complete-stats {
+    flex-direction: column;
+  }
+}

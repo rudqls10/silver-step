@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediaPipe Pose 테스트 - Silver Step</title>
+  <link rel="stylesheet" href="../src/css/style.css">
+
+  <!-- MediaPipe CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- 카메라 & 캔버스 -->
+    <div class="camera-container">
+      <video id="camera-video" autoplay playsinline></video>
+      <canvas id="pose-canvas"></canvas>
+      <div class="camera-vignette"></div>
+    </div>
+
+    <!-- UI 오버레이 -->
+    <div class="ui-overlay">
+      <div></div>
+
+      <!-- 카운트 표시 -->
+      <div class="count-display">
+        <div class="count-number" id="main-count">0</div>
+        <div class="count-target">스쿼트 횟수</div>
+      </div>
+
+      <!-- 메시지 -->
+      <div class="message-container">
+        <div class="message-display">
+          <div class="message-text" id="status-message">
+            ▶ 아래 버튼을 눌러 카메라를 시작하세요
+          </div>
+        </div>
+        <button class="start-button" id="start-btn" style="margin-top: 16px;">
+          카메라 시작
+        </button>
+      </div>
+    </div>
+
+    <!-- 디버그 패널 -->
+    <div class="debug-panel" id="debug-panel">
+      <h3>🔬 MediaPipe Pose 테스트</h3>
+      <div class="debug-row">
+        <span class="debug-label">FPS</span>
+        <span class="debug-value" id="fps-value">-</span>
+      </div>
+      <div class="debug-row">
+        <span class="debug-label">상태</span>
+        <span class="debug-value" id="state-value">초기화 중...</span>
+      </div>
+      <div class="debug-row">
+        <span class="debug-label">무릎(L)</span>
+        <span class="debug-value" id="left-knee-value">-</span>
+      </div>
+      <div class="debug-row">
+        <span class="debug-label">무릎(R)</span>
+        <span class="debug-value" id="right-knee-value">-</span>
+      </div>
+      <div class="debug-row">
+        <span class="debug-label">평균 각도</span>
+        <span class="debug-value" id="avg-angle-value">-</span>
+      </div>
+      <hr class="debug-divider">
+      <div class="debug-row">
+        <span class="debug-label">카운트</span>
+        <span class="debug-value" id="count-value">0</span>
+      </div>
+      <div class="debug-row">
+        <span class="debug-label">신뢰도</span>
+        <span class="debug-value" id="confidence-value">-</span>
+      </div>
+      <hr class="debug-divider">
+      <div style="margin-top: 8px;">
+        <label class="debug-label" style="display: block; margin-bottom: 4px;">서기 임계값 (°)</label>
+        <input type="range" id="standing-threshold" min="130" max="180" value="160" style="width: 100%;">
+        <span class="debug-value" id="standing-threshold-value">160</span>
+      </div>
+      <div style="margin-top: 8px;">
+        <label class="debug-label" style="display: block; margin-bottom: 4px;">앉기 임계값 (°)</label>
+        <input type="range" id="squatting-threshold" min="60" max="130" value="100" style="width: 100%;">
+        <span class="debug-value" id="squatting-threshold-value">100</span>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { MediaPipePoseDetector } from '../src/js/pose-mediapipe.js';
+    import { ExerciseCounter } from '../src/js/counter.js';
+
+    // DOM 요소
+    const video = document.getElementById('camera-video');
+    const canvas = document.getElementById('pose-canvas');
+    const startBtn = document.getElementById('start-btn');
+    const statusMsg = document.getElementById('status-message');
+    const mainCount = document.getElementById('main-count');
+
+    // 디버그 요소
+    const fpsEl = document.getElementById('fps-value');
+    const stateEl = document.getElementById('state-value');
+    const leftKneeEl = document.getElementById('left-knee-value');
+    const rightKneeEl = document.getElementById('right-knee-value');
+    const avgAngleEl = document.getElementById('avg-angle-value');
+    const countEl = document.getElementById('count-value');
+    const confidenceEl = document.getElementById('confidence-value');
+
+    // 임계값 슬라이더
+    const standingSlider = document.getElementById('standing-threshold');
+    const squattingSlider = document.getElementById('squatting-threshold');
+    const standingVal = document.getElementById('standing-threshold-value');
+    const squattingVal = document.getElementById('squatting-threshold-value');
+
+    // 카운터
+    const counter = new ExerciseCounter({
+      targetCount: 999, // 테스트이므로 제한 없음
+      milestones: [5, 10, 15, 20],
+      onCountUpdate: (count) => {
+        mainCount.textContent = count;
+        countEl.textContent = count;
+        // 카운트 애니메이션
+        mainCount.classList.add('bump');
+        setTimeout(() => mainCount.classList.remove('bump'), 300);
+      },
+      onMilestone: (count) => {
+        statusMsg.textContent = `🎉 ${count}회 달성!`;
+        setTimeout(() => {
+          statusMsg.textContent = '운동을 계속하세요';
+        }, 2000);
+      },
+    });
+
+    // 포즈 감지기
+    let detector = null;
+
+    startBtn.addEventListener('click', async () => {
+      startBtn.style.display = 'none';
+      statusMsg.textContent = 'MediaPipe 모델 로딩 중...';
+
+      detector = new MediaPipePoseDetector(video, canvas, {
+        standingAngle: parseInt(standingSlider.value),
+        squattingAngle: parseInt(squattingSlider.value),
+        onPoseState: (state) => {
+          stateEl.textContent = state.state;
+          leftKneeEl.textContent = `${state.leftKneeAngle}°`;
+          rightKneeEl.textContent = `${state.rightKneeAngle}°`;
+          avgAngleEl.textContent = `${state.kneeAngle}°`;
+          confidenceEl.textContent = `${state.confidence}%`;
+
+          // 상태 색상
+          stateEl.style.color = {
+            'UP': '#00e676',
+            'DOWN': '#ff9100',
+            'TRANSITIONING': '#448aff',
+            'NOT_DETECTED': '#ff5252',
+          }[state.state] || '#a0aec0';
+
+          // 카운터 업데이트
+          if (state.detected) {
+            counter.update(state.state);
+          }
+
+          // 상태 메시지
+          if (!state.detected) {
+            statusMsg.textContent = '사람이 감지되지 않습니다. 카메라 앞에 서 주세요.';
+          } else if (state.state === 'UP') {
+            statusMsg.textContent = '✅ 서 있는 상태 (UP)';
+          } else if (state.state === 'DOWN') {
+            statusMsg.textContent = '⬇️ 앉은 상태 (DOWN)';
+          } else {
+            statusMsg.textContent = '🔄 전환 중...';
+          }
+        },
+        onFpsUpdate: (fps) => {
+          fpsEl.textContent = fps;
+        },
+      });
+
+      try {
+        await detector.init();
+        statusMsg.textContent = '카메라 연결 중...';
+        await detector.start();
+        detector.resizeCanvas();
+        statusMsg.textContent = '3m 뒤에 서서 스쿼트를 해보세요';
+      } catch (error) {
+        statusMsg.textContent = '❌ 카메라 접근에 실패했습니다: ' + error.message;
+        console.error(error);
+      }
+    });
+
+    // 임계값 실시간 조정
+    standingSlider.addEventListener('input', (e) => {
+      standingVal.textContent = e.target.value;
+      if (detector) detector.standingAngle = parseInt(e.target.value);
+    });
+
+    squattingSlider.addEventListener('input', (e) => {
+      squattingVal.textContent = e.target.value;
+      if (detector) detector.squattingAngle = parseInt(e.target.value);
+    });
+  </script>
+</body>
+</html>

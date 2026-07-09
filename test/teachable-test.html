@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teachable Machine Pose 테스트 - Silver Step</title>
+  <link rel="stylesheet" href="../src/css/style.css">
+
+  <!-- TensorFlow.js + Teachable Machine Pose CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- 카메라 & 캔버스 -->
+    <div class="camera-container">
+      <canvas id="pose-canvas" width="640" height="480"></canvas>
+      <div class="camera-vignette"></div>
+    </div>
+
+    <!-- UI 오버레이 -->
+    <div class="ui-overlay">
+      <div></div>
+
+      <!-- 분류 결과 표시 -->
+      <div class="count-display" id="classification-display" style="display: none;">
+        <div class="count-number" id="top-class">-</div>
+        <div class="count-target" id="top-confidence">-</div>
+      </div>
+
+      <!-- 메시지 & 입력 -->
+      <div class="message-container">
+        <div class="message-display" style="max-width: 95%;">
+          <div class="message-text" id="status-message">
+            Teachable Machine 모델 URL을 입력하세요
+          </div>
+        </div>
+
+        <!-- 모델 URL 입력 -->
+        <div id="model-input-area" style="
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+          margin-top: 16px;
+          pointer-events: auto;
+          width: 90%;
+          max-width: 600px;
+        ">
+          <input type="text" id="model-url" placeholder="https://teachablemachine.withgoogle.com/models/xxxxx/"
+            style="
+              width: 100%;
+              padding: 16px 20px;
+              font-size: 18px;
+              font-family: var(--font-family);
+              background: var(--bg-card);
+              color: var(--text-primary);
+              border: 1px solid rgba(255,255,255,0.15);
+              border-radius: var(--radius-lg);
+              outline: none;
+              backdrop-filter: blur(12px);
+            "
+          >
+          <button class="start-button" id="start-btn" style="min-width: 250px;">
+            모델 로드 & 시작
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 디버그 패널 -->
+    <div class="debug-panel" id="debug-panel">
+      <h3>🔬 Teachable Machine 테스트</h3>
+      <div class="debug-row">
+        <span class="debug-label">FPS</span>
+        <span class="debug-value" id="fps-value">-</span>
+      </div>
+      <div class="debug-row">
+        <span class="debug-label">앱 상태</span>
+        <span class="debug-value" id="mapped-state">-</span>
+      </div>
+      <hr class="debug-divider">
+      <div id="class-bars" style="margin-top: 8px;">
+        <!-- 분류 결과 바가 동적으로 생성됩니다 -->
+      </div>
+      <hr class="debug-divider">
+      <div class="debug-row">
+        <span class="debug-label">카운트</span>
+        <span class="debug-value" id="count-value">0</span>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { TeachableMachinePoseDetector } from '../src/js/pose-teachable.js';
+    import { ExerciseCounter } from '../src/js/counter.js';
+
+    // DOM 요소
+    const canvas = document.getElementById('pose-canvas');
+    const startBtn = document.getElementById('start-btn');
+    const modelUrlInput = document.getElementById('model-url');
+    const modelInputArea = document.getElementById('model-input-area');
+    const statusMsg = document.getElementById('status-message');
+    const classDisplay = document.getElementById('classification-display');
+    const topClassEl = document.getElementById('top-class');
+    const topConfidenceEl = document.getElementById('top-confidence');
+    const classBars = document.getElementById('class-bars');
+    const fpsEl = document.getElementById('fps-value');
+    const mappedStateEl = document.getElementById('mapped-state');
+    const countValueEl = document.getElementById('count-value');
+
+    // 카운터
+    const counter = new ExerciseCounter({
+      targetCount: 999,
+      milestones: [5, 10],
+      onCountUpdate: (count) => {
+        countValueEl.textContent = count;
+        topClassEl.textContent = count;
+      },
+    });
+
+    startBtn.addEventListener('click', async () => {
+      const url = modelUrlInput.value.trim();
+      if (!url) {
+        statusMsg.textContent = '❌ 모델 URL을 입력해주세요';
+        return;
+      }
+
+      // URL 정규화 (끝에 / 추가)
+      const normalizedUrl = url.endsWith('/') ? url : url + '/';
+
+      statusMsg.textContent = '모델 로딩 중...';
+      startBtn.disabled = true;
+
+      const detector = new TeachableMachinePoseDetector(canvas, {
+        modelURL: normalizedUrl,
+        onClassification: (results) => {
+          // 분류 결과 바 업데이트
+          renderClassBars(results);
+
+          // 최고 확률 클래스 표시
+          const top = results.reduce((max, r) => r.probability > max.probability ? r : max, results[0]);
+          topClassEl.textContent = top.className;
+          topConfidenceEl.textContent = `${Math.round(top.probability * 100)}%`;
+        },
+        onPoseState: (state) => {
+          mappedStateEl.textContent = state.state;
+          mappedStateEl.style.color = {
+            'UP': '#00e676',
+            'DOWN': '#ff9100',
+            'NOT_DETECTED': '#ff5252',
+          }[state.state] || '#a0aec0';
+
+          // 카운터 업데이트
+          if (state.detected) {
+            counter.update(state.state);
+          }
+        },
+        onFpsUpdate: (fps) => {
+          fpsEl.textContent = fps;
+        },
+      });
+
+      try {
+        await detector.init();
+        await detector.start();
+        detector.resizeCanvas();
+
+        // UI 전환
+        modelInputArea.style.display = 'none';
+        classDisplay.style.display = 'block';
+        statusMsg.textContent = '모델이 로드되었습니다. 카메라 앞에서 포즈를 취해보세요.';
+
+      } catch (error) {
+        statusMsg.textContent = '❌ 모델 로드 실패: ' + error.message;
+        startBtn.disabled = false;
+        console.error(error);
+      }
+    });
+
+    /**
+     * 분류 결과를 시각적 바로 렌더링
+     */
+    function renderClassBars(results) {
+      classBars.innerHTML = results.map(r => {
+        const pct = Math.round(r.probability * 100);
+        const barColor = pct > 70 ? '#00e676' : pct > 40 ? '#ff9100' : '#ff5252';
+        return `
+          <div style="margin-bottom: 6px;">
+            <div class="debug-row">
+              <span class="debug-label">${r.className}</span>
+              <span class="debug-value">${pct}%</span>
+            </div>
+            <div style="
+              width: 100%;
+              height: 4px;
+              background: rgba(255,255,255,0.08);
+              border-radius: 2px;
+              overflow: hidden;
+            ">
+              <div style="
+                width: ${pct}%;
+                height: 100%;
+                background: ${barColor};
+                border-radius: 2px;
+                transition: width 0.2s ease;
+              "></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  </script>
+</body>
+</html>
