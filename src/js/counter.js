@@ -21,6 +21,7 @@ export class ExerciseCounter {
    * @param {Function} options.onCountUpdate - 카운트 변경 시 콜백 (count, target)
    * @param {Function} options.onMilestone - 마일스톤 도달 시 콜백 (count)
    * @param {Function} options.onComplete - 목표 달성 시 콜백 (count)
+   * @param {Function} options.onCountBeep - 카운트 증가 시 비프음 콜백
    */
   constructor(options = {}) {
     this.targetCount = options.targetCount || 10;
@@ -37,6 +38,7 @@ export class ExerciseCounter {
     this.onCountUpdate = options.onCountUpdate || (() => {});
     this.onMilestone = options.onMilestone || (() => {});
     this.onComplete = options.onComplete || (() => {});
+    this.onCountBeep = options.onCountBeep || (() => {});
   }
 
   /**
@@ -60,6 +62,10 @@ export class ExerciseCounter {
     // DOWN → UP 전환 시 1회 카운트
     if (this.lastState === 'DOWN' && state === 'UP') {
       this.count++;
+
+      // 비프음 트리거
+      this.onCountBeep();
+
       this.onCountUpdate(this.count, this.targetCount);
 
       // 마일스톤 체크

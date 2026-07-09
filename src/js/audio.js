@@ -13,9 +13,12 @@ export class AudioManager {
     this.isSpeaking = false;
     this.koreanVoice = null;
     this.audioElements = new Map(); // mp3 프리로드 캐시
+    this.audioContext = null; // Web Audio API (비프음)
 
     // 한국어 음성 초기화
     this._initVoice();
+    // Web Audio API 초기화
+    this._initAudioContext();
   }
 
   /**
@@ -36,6 +39,17 @@ export class AudioManager {
     // 일부 브라우저에서 voiceschanged 이벤트 후 음성 목록이 로드됨
     if (this.synth.onvoiceschanged !== undefined) {
       this.synth.onvoiceschanged = findKoreanVoice;
+    }
+  }
+
+  /**
+   * Web Audio API 초기화 (비프음용)
+   */
+  _initAudioContext() {
+    try {
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+      console.warn('[AudioManager] Web Audio API not available:', e);
     }
   }
 
@@ -74,6 +88,72 @@ export class AudioManager {
       this.isSpeaking = true;
       this.synth.speak(utterance);
     });
+  }
+
+  /**
+   * 카운트 증가 시 짧은 비프음 재생
+   * @param {number} frequency - 주파수 (Hz), 기본 880
+   * @param {number} duration - 지속 시간 (ms), 기본 100
+   */
+  playBeep(frequency = 880, duration = 100) {
+    if (!this.audioContext) return;
+
+    try {
+      // AudioContext가 suspended 상태면 resume
+      if (this.audioContext.state === 'suspended') {
+        this.audioContext.resume();
+      }
+
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+
+      // 부드러운 페이드인/아웃
+      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, this.audioContext.currentTime + 0.01);
+      gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + duration / 1000);
+
+      oscillator.start(this.audioContext.currentTime);
+      oscillator.stop(this.audioContext.currentTime + duration / 1000);
+    } catch (e) {
+      console.warn('[AudioManager] Beep error:', e);
+    }
+  }
+
+  /**
+   * 성공 비프음 (카운트 증가 시)
+   */
+  playCountBeep() {
+    this.playBeep(880, 120);
+  }
+
+  /**
+   * 마일스톤 달성 효과음 (연속 비프)
+   */
+  async playMilestoneSound() {
+    this.playBeep(660, 100);
+    await this._delay(120);
+    this.playBeep(880, 100);
+    await this._delay(120);
+    this.playBeep(1100, 150);
+  }
+
+  /**
+   * 완료 효과음
+   */
+  async playCompleteSound() {
+    this.playBeep(523, 150);
+    await this._delay(150);
+    this.playBeep(659, 150);
+    await this._delay(150);
+    this.playBeep(784, 150);
+    await this._delay(150);
+    this.playBeep(1047, 300);
   }
 
   /**
@@ -161,13 +241,25 @@ export class AudioManager {
  * PRD에 정의된 음성 대사 상수
  */
 AudioManager.MESSAGES = Object.freeze({
-  GREETING:   '안녕하세요. 오늘도 운동 시작해볼까요?',
-  START:      '좋습니다. 운동을 시작하겠습니다.',
-  ENCOURAGE:  '5번 성공했습니다. 조금만 더 힘내세요. 무릎을 조금 더 구부리면 안전합니다.',
-  COMPLETE:   '오늘의 운동이 끝났습니다. 수고하셨습니다!',
-  WAITING:    '초록색 위치에 서 주세요.',
-  POSE_FOUND: '좋은 자세입니다. 곧 시작합니다.',
+  GREETING:      '안녕하세요. 오늘도 운동 시작해볼까요?',
+  START:         '좋습니다. 운동을 시작하겠습니다.',
+  ENCOURAGE:     '5번 성공했습니다. 조금만 더 힘내세요. 무릎을 조금 더 구부리면 안전합니다.',
+  COMPLETE:      '오늘의 운동이 끝났습니다. 수고하셨습니다!',
+  WAITING:       '초록색 위치에 서 주세요.',
+  POSE_FOUND:    '좋은 자세입니다. 곧 시작합니다.',
+  POSE_LOST:     '카메라 앞에 서 주세요.',
+  NOTIFY_SENT:   '자녀에게 알림을 보냈습니다.',
 });
+
+/**
+ * 격려 메시지 풀 (랜덤 재생용)
+ */
+AudioManager.ENCOURAGE_POOL = Object.freeze([
+  '잘 하고 계세요! 이 조자로 계속 해볼까요?',
+  '대단합니다! 꾸준히 하면 건강해져요.',
+  '아주 좋습니다! 조금만 더 힘내세요.',
+  '멋져요! 자세가 아주 좋습니다.',
+]);
 
 /**
  * mp3 파일 경로 상수 (성우 음성 교체 시 사용)

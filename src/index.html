@@ -32,16 +32,21 @@
          ======================== -->
     <div class="ui-overlay">
 
-      <!-- 상단: 상태 표시 -->
+      <!-- 상단: 상태 표시 + 타이머 -->
       <div class="status-bar">
         <div class="status-indicator">
           <div class="status-dot" id="status-dot"></div>
           <span class="status-text" id="status-text">대기 중</span>
         </div>
+        <div class="exercise-timer" id="exercise-timer">
+          <span class="timer-icon">⏱️</span>
+          <span class="timer-text" id="timer-text">00:00</span>
+        </div>
       </div>
 
-      <!-- 중앙: 카운트 표시 -->
+      <!-- 중앙: 운동 종류 + 카운트 표시 -->
       <div class="count-display">
+        <div class="exercise-type" id="exercise-type">🙌 만세 운동</div>
         <div class="count-number" id="count-number">0</div>
         <div class="count-target" id="count-target">/ 10</div>
       </div>
@@ -54,7 +59,7 @@
           </div>
           <div class="progress-text" id="progress-text">0 / 10</div>
         </div>
-        <div class="message-display">
+        <div class="message-display" id="message-display">
           <div class="message-text" id="message-text">시작 버튼을 눌러주세요</div>
         </div>
       </div>
@@ -70,6 +75,23 @@
         <h1 class="app-title">실버스텝</h1>
         <p class="app-subtitle">AI가 지켜보는 안심 홈트레이닝</p>
       </div>
+
+      <!-- 사용법 안내 -->
+      <div class="usage-guide">
+        <div class="guide-item">
+          <span class="guide-icon">📏</span>
+          <span class="guide-text">스마트폰에서 3m 떨어져 주세요</span>
+        </div>
+        <div class="guide-item">
+          <span class="guide-icon">🧍</span>
+          <span class="guide-text">전신이 카메라에 보이게 서 주세요</span>
+        </div>
+        <div class="guide-item">
+          <span class="guide-icon">🔊</span>
+          <span class="guide-text">음성 안내를 따라 운동해 주세요</span>
+        </div>
+      </div>
+
       <button class="start-button" id="start-button">
         운동 시작하기
       </button>
@@ -86,6 +108,22 @@
          운동 완료 화면
          ======================== -->
     <div class="complete-screen" id="complete-screen">
+      <!-- 축하 파티클 -->
+      <div class="confetti-container" id="confetti-container">
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+      </div>
+
       <div class="complete-icon">🎉</div>
       <h2 class="complete-title">오늘의 운동 완료!</h2>
       <div class="complete-stats">
@@ -98,8 +136,30 @@
           <div class="stat-label">운동 시간</div>
         </div>
       </div>
-      <button class="restart-button" id="restart-button">
-        다시 운동하기
+
+      <!-- 버튼 그룹 -->
+      <div class="complete-actions">
+        <button class="notify-button" id="notify-button">
+          📱 자녀에게 알림 보내기
+        </button>
+        <button class="restart-button" id="restart-button">
+          다시 운동하기
+        </button>
+      </div>
+    </div>
+
+    <!-- ========================
+         에러 화면 (카메라 권한 등)
+         ======================== -->
+    <div class="error-screen" id="error-screen">
+      <div class="error-icon">📷</div>
+      <h2 class="error-title">카메라를 켜 주세요</h2>
+      <p class="error-message" id="error-message">
+        운동을 시작하려면 카메라 사용을 허용해야 합니다.<br>
+        브라우저의 카메라 권한을 확인해 주세요.
+      </p>
+      <button class="error-retry-button" id="error-retry-button">
+        다시 시도하기
       </button>
     </div>
 

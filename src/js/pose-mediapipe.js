@@ -45,6 +45,9 @@ export class MediaPipePoseDetector {
     this.drawSkeleton = options.drawSkeleton !== false;
     this.blurBackground = options.blurBackground || false;
 
+    // 현재 포즈 상태 (스켈레톤 색상용)
+    this._currentPoseState = 'NOT_DETECTED';
+
     // 각도 임계값
     this.standingAngle = options.standingAngle || 160;
     this.squattingAngle = options.squattingAngle || 100;
@@ -123,13 +126,18 @@ export class MediaPipePoseDetector {
     this.ctx.save();
     this.ctx.clearRect(0, 0, width, height);
 
-    // 카메라 이미지 그리기
-    this.ctx.drawImage(results.image, 0, 0, width, height);
-
-    // 배경 블러 효과 (CSS로 처리하므로 여기서는 반투명 오버레이)
     if (this.blurBackground) {
-      this.ctx.fillStyle = 'rgba(10, 14, 23, 0.4)';
+      // 블러 모드: 어두운 배경만 그리고 스켈레톤만 선명하게
+      this.ctx.fillStyle = 'rgba(10, 14, 23, 0.85)';
       this.ctx.fillRect(0, 0, width, height);
+
+      // 반투명 카메라 이미지 (실루엣 느낌)
+      this.ctx.globalAlpha = 0.08;
+      this.ctx.drawImage(results.image, 0, 0, width, height);
+      this.ctx.globalAlpha = 1.0;
+    } else {
+      // 일반 모드: 카메라 이미지 그대로
+      this.ctx.drawImage(results.image, 0, 0, width, height);
     }
 
     if (results.poseLandmarks) {
@@ -140,9 +148,11 @@ export class MediaPipePoseDetector {
 
       // 포즈 분석
       const poseState = this._analyzePose(results.poseLandmarks);
+      this._currentPoseState = poseState.state;
       this.onPoseState(poseState);
       this.onLandmarks(results.poseLandmarks);
     } else {
+      this._currentPoseState = 'NOT_DETECTED';
       this.onPoseState({
         detected: false,
         state: 'NOT_DETECTED',
@@ -158,10 +168,21 @@ export class MediaPipePoseDetector {
 
   /**
    * 포즈 랜드마크를 캔버스에 그리기 (얼굴 랜드마크 제외)
+   * 상태에 따라 색상 변경: UP=초록, DOWN=주황, TRANSITIONING=파랑
    * @private
    */
   _drawPose(landmarks) {
     /* global drawConnectors, drawLandmarks, POSE_CONNECTIONS */
+
+    // 상태별 색상
+    const stateColors = {
+      'UP': { line: '#00E676', joint: '#00E676', glow: 'rgba(0, 230, 118, 0.5)' },
+      'DOWN': { line: '#FF9100', joint: '#FF9100', glow: 'rgba(255, 145, 0, 0.5)' },
+      'TRANSITIONING': { line: '#448AFF', joint: '#448AFF', glow: 'rgba(68, 138, 255, 0.5)' },
+      'NOT_DETECTED': { line: '#448AFF', joint: '#448AFF', glow: 'rgba(68, 138, 255, 0.5)' },
+    };
+
+    const colors = stateColors[this._currentPoseState] || stateColors['NOT_DETECTED'];
 
     // 얼굴 랜드마크 인덱스 (0~10) 제외 필터
     const FACE_INDICES = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
@@ -171,29 +192,38 @@ export class MediaPipePoseDetector {
       ([a, b]) => !FACE_INDICES.has(a) && !FACE_INDICES.has(b)
     );
 
+    // 글로우 효과 (블러 모드에서 더 강하게)
+    if (this.blurBackground) {
+      this.ctx.shadowColor = colors.glow;
+      this.ctx.shadowBlur = 15;
+    }
+
     // 몸통 연결선만 그리기
     drawConnectors(this.ctx, landmarks, bodyConnections, {
-      color: '#00E676',
-      lineWidth: 3,
+      color: colors.line,
+      lineWidth: this.blurBackground ? 4 : 3,
     });
+
+    // 글로우 리셋
+    this.ctx.shadowBlur = 0;
 
     // 몸통 관절점만 그리기 (11번 이후)
     const bodyLandmarks = landmarks.filter((_, i) => !FACE_INDICES.has(i));
     drawLandmarks(this.ctx, bodyLandmarks, {
-      color: '#448AFF',
+      color: colors.joint,
       lineWidth: 1,
-      radius: 5,
-      fillColor: '#448AFF',
+      radius: this.blurBackground ? 6 : 5,
+      fillColor: colors.joint,
     });
 
     // 주요 관절 강조 (어깨, 팔꿈치, 손목)
     const keyJoints = [11, 12, 13, 14, 15, 16]; // 양쪽 어깨, 팔꿈치, 손목
     const keyLandmarks = keyJoints.map(i => landmarks[i]);
     drawLandmarks(this.ctx, keyLandmarks, {
-      color: '#FF9100',
+      color: '#ffffff',
       lineWidth: 2,
-      radius: 8,
-      fillColor: 'rgba(255, 145, 0, 0.5)',
+      radius: this.blurBackground ? 10 : 8,
+      fillColor: colors.glow,
     });
   }
 
