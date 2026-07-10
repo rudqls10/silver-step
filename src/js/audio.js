@@ -249,6 +249,10 @@ AudioManager.MESSAGES = Object.freeze({
   POSE_FOUND:    '좋은 자세입니다. 곧 시작합니다.',
   POSE_LOST:     '카메라 앞에 서 주세요.',
   NOTIFY_SENT:   '자녀에게 알림을 보냈습니다.',
+
+  // 무릎 올리기 전용
+  KNEE_RAISE_START:     '무릎을 번갈아 높이 올려주세요.',
+  KNEE_RAISE_ENCOURAGE: '무릎을 좀 더 높이 올려보세요. 잘 하고 계세요!',
 });
 
 /**

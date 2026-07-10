@@ -12,6 +12,7 @@
 import { MediaPipePoseDetector } from './pose-mediapipe.js';
 import { AudioManager } from './audio.js';
 import { ExerciseCounter } from './counter.js';
+import { ExerciseType, getExerciseConfig } from './exercises.js';
 
 // ============================
 // 앱 상태 정의
@@ -31,6 +32,10 @@ class SilverStepApp {
     this.detector = null;
     this.audio = null;
     this.counter = null;
+
+    // 현재 선택된 운동
+    this.currentExercise = ExerciseType.MANSE;
+    this._exerciseConfig = getExerciseConfig(this.currentExercise);
 
     // DOM 요소
     this.dom = {};
@@ -99,6 +104,9 @@ class SilverStepApp {
       return;
     }
 
+    // 운동 선택 카드 이벤트
+    this._bindExerciseCards();
+
     // 시작 버튼 이벤트
     this.dom.startButton.addEventListener('click', () => this.start());
     this.dom.restartButton.addEventListener('click', () => this.restart());
@@ -115,7 +123,7 @@ class SilverStepApp {
 
     // 초기 상태 설정
     this._setState(AppState.IDLE);
-    this._updateMessage('시작 버튼을 눌러주세요');
+    this._updateMessage('운동을 선택하고 시작 버튼을 눌러주세요');
 
     console.log('[App] 초기화 완료');
   }
@@ -125,6 +133,9 @@ class SilverStepApp {
    */
   async start() {
     try {
+      // 선택된 운동 타입을 감지기에 설정
+      this.detector.setExerciseType(this.currentExercise);
+
       // 카메라 시작
       await this.detector.start();
       this.detector.resizeCanvas();
@@ -143,7 +154,7 @@ class SilverStepApp {
 
     // 인사 완료 → 포즈 대기
     this._setState(AppState.WAITING_POSE);
-    this._updateMessage('초록색 위치에 서 주세요');
+    this._updateMessage(this._exerciseConfig.waitingMessage || '초록색 위치에 서 주세요');
   }
 
   /**
@@ -181,7 +192,7 @@ class SilverStepApp {
     this._setState(AppState.GREETING);
     await this.audio.speak(AudioManager.MESSAGES.GREETING);
     this._setState(AppState.WAITING_POSE);
-    this._updateMessage('초록색 위치에 서 주세요');
+    this._updateMessage(this._exerciseConfig.waitingMessage || '초록색 위치에 서 주세요');
   }
 
   // ============================
@@ -234,7 +245,10 @@ class SilverStepApp {
    * @private
    */
   _handleWaitingPose(poseData) {
-    if (poseData.detected && poseData.state === 'UP') {
+    // 운동별 대기 포즈 확인 (만세=UP으로 시작, 무릎올리기=DOWN으로 시작)
+    const expectedPose = this._exerciseConfig.waitingPose || 'UP';
+
+    if (poseData.detected && poseData.state === expectedPose) {
       if (!this._poseDetectedTime) {
         this._poseDetectedTime = Date.now();
         this._updateMessage('좋은 자세입니다. 잠시만 유지해주세요...');
@@ -250,7 +264,7 @@ class SilverStepApp {
       // 포즈가 사라지면 타이머 리셋
       this._poseDetectedTime = null;
       if (poseData.detected) {
-        this._updateMessage('초록색 위치에 서 주세요');
+        this._updateMessage(this._exerciseConfig.waitingMessage || '올바른 자세를 취해주세요');
       } else {
         this._updateMessage('카메라에 전신이 보이게 서 주세요');
       }
@@ -286,14 +300,20 @@ class SilverStepApp {
 
     // 운동 종류 표시
     if (this.dom.exerciseType) {
+      this.dom.exerciseType.textContent = `${this._exerciseConfig.icon} ${this._exerciseConfig.name}`;
       this.dom.exerciseType.classList.add('active');
     }
 
     // 타이머 시작
     this._startTimer();
 
-    await this.audio.speak(AudioManager.MESSAGES.START);
-    this._updateMessage('운동을 시작하세요!');
+    // 운동별 시작 안내
+    if (this.currentExercise === ExerciseType.KNEE_RAISE) {
+      await this.audio.speak(AudioManager.MESSAGES.KNEE_RAISE_START);
+    } else {
+      await this.audio.speak(AudioManager.MESSAGES.START);
+    }
+    this._updateMessage(`${this._exerciseConfig.description}`);
   }
 
   /**
@@ -600,6 +620,10 @@ class SilverStepApp {
       startScreen: document.getElementById('start-screen'),
       startButton: document.getElementById('start-button'),
 
+      // 운동 선택
+      exerciseSelector: document.getElementById('exercise-selector'),
+      exerciseCards: document.querySelectorAll('.exercise-card'),
+
       // 상태바
       statusDot: document.getElementById('status-dot'),
       statusText: document.getElementById('status-text'),
@@ -646,6 +670,29 @@ class SilverStepApp {
       debugKneeR: document.getElementById('debug-knee-r'),
       debugConfidence: document.getElementById('debug-confidence'),
     };
+  }
+
+  /**
+   * 운동 선택 카드 이벤트 바인딩
+   * @private
+   */
+  _bindExerciseCards() {
+    this.dom.exerciseCards.forEach(card => {
+      card.addEventListener('click', () => {
+        const exerciseType = card.dataset.exercise;
+        if (!exerciseType) return;
+
+        // 선택 상태 업데이트
+        this.dom.exerciseCards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+
+        // 운동 타입 설정
+        this.currentExercise = exerciseType;
+        this._exerciseConfig = getExerciseConfig(exerciseType);
+
+        console.log(`[App] 운동 선택: ${this._exerciseConfig.name}`);
+      });
+    });
   }
 
   // ============================

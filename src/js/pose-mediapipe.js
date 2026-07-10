@@ -15,6 +15,7 @@
  *   await detector.init();
  *   await detector.start();
  */
+import { ExerciseType, getExerciseConfig } from './exercises.js';
 export class MediaPipePoseDetector {
   /**
    * @param {HTMLVideoElement} videoElement - 카메라 비디오 엘리먼트
@@ -47,6 +48,10 @@ export class MediaPipePoseDetector {
 
     // 현재 포즈 상태 (스켈레톤 색상용)
     this._currentPoseState = 'NOT_DETECTED';
+
+    // 현재 운동 타입
+    this.exerciseType = options.exerciseType || ExerciseType.MANSE;
+    this._exerciseConfig = getExerciseConfig(this.exerciseType);
 
     // 각도 임계값
     this.standingAngle = options.standingAngle || 160;
@@ -116,6 +121,16 @@ export class MediaPipePoseDetector {
   }
 
   /**
+   * 운동 타입 변경
+   * @param {string} exerciseType - ExerciseType 값
+   */
+  setExerciseType(exerciseType) {
+    this.exerciseType = exerciseType;
+    this._exerciseConfig = getExerciseConfig(exerciseType);
+    console.log(`[MediaPipe] 운동 타입 변경: ${this._exerciseConfig.name}`);
+  }
+
+  /**
    * MediaPipe 결과 처리 콜백
    * @private
    */
@@ -132,8 +147,8 @@ export class MediaPipePoseDetector {
       this.ctx.drawImage(results.image, 0, 0, width, height);
       this.ctx.filter = 'none';
 
-      // 밝은 반투명 오버레이 (프라이버시 보호 + 밝은 톤 유지)
-      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+      // 밝은 반투명 오버레이 (프라이버시 보호 + 따뜻한 톤 유지)
+      this.ctx.fillStyle = 'rgba(255, 249, 242, 0.15)';
       this.ctx.fillRect(0, 0, width, height);
     } else {
       // 일반 모드: 카메라 이미지 그대로
@@ -174,12 +189,12 @@ export class MediaPipePoseDetector {
   _drawPose(landmarks) {
     /* global drawConnectors, drawLandmarks, POSE_CONNECTIONS */
 
-    // 상태별 색상
+    // 상태별 색상 (따뜻한 테마)
     const stateColors = {
-      'UP': { line: '#00E676', joint: '#00E676', glow: 'rgba(0, 230, 118, 0.5)' },
-      'DOWN': { line: '#FF9100', joint: '#FF9100', glow: 'rgba(255, 145, 0, 0.5)' },
-      'TRANSITIONING': { line: '#448AFF', joint: '#448AFF', glow: 'rgba(68, 138, 255, 0.5)' },
-      'NOT_DETECTED': { line: '#448AFF', joint: '#448AFF', glow: 'rgba(68, 138, 255, 0.5)' },
+      'UP': { line: '#4CAF50', joint: '#4CAF50', glow: 'rgba(76, 175, 80, 0.5)' },
+      'DOWN': { line: '#FF7043', joint: '#FF7043', glow: 'rgba(255, 112, 67, 0.5)' },
+      'TRANSITIONING': { line: '#42A5F5', joint: '#42A5F5', glow: 'rgba(66, 165, 245, 0.5)' },
+      'NOT_DETECTED': { line: '#42A5F5', joint: '#42A5F5', glow: 'rgba(66, 165, 245, 0.5)' },
     };
 
     const colors = stateColors[this._currentPoseState] || stateColors['NOT_DETECTED'];
@@ -216,8 +231,8 @@ export class MediaPipePoseDetector {
       fillColor: colors.joint,
     });
 
-    // 주요 관절 강조 (어깨, 팔꿈치, 손목)
-    const keyJoints = [11, 12, 13, 14, 15, 16]; // 양쪽 어깨, 팔꿈치, 손목
+    // 현재 운동에 맞는 주요 관절 강조
+    const keyJoints = this._exerciseConfig.highlightJoints || [11, 12, 13, 14, 15, 16];
     const keyLandmarks = keyJoints.map(i => landmarks[i]);
     drawLandmarks(this.ctx, keyLandmarks, {
       color: '#ffffff',
@@ -228,68 +243,23 @@ export class MediaPipePoseDetector {
   }
 
   /**
-   * 포즈 상태 분석 (만세 동작 판별)
+   * 포즈 상태 분석 (현재 운동 타입에 따라 분석 위임)
    * @private
    * @param {Array} landmarks - 33개 관절 랜드마크
    * @returns {Object} 포즈 상태 정보
    */
   _analyzePose(landmarks) {
-    // MediaPipe Pose 랜드마크 인덱스:
-    // 11/12: 왼쪽/오른쪽 어깨
-    // 13/14: 왼쪽/오른쪽 팔꿈치
-    // 15/16: 왼쪽/오른쪽 손목
-    // 23/24: 왼쪽/오른쪽 엉덩이
+    // exercises.js의 analyze 함수에 위임
+    const result = this._exerciseConfig.analyze(landmarks);
 
-    const leftShoulder = landmarks[11];
-    const rightShoulder = landmarks[12];
-    const leftElbow = landmarks[13];
-    const rightElbow = landmarks[14];
-    const leftWrist = landmarks[15];
-    const rightWrist = landmarks[16];
-    const leftHip = landmarks[23];
-    const rightHip = landmarks[24];
-
-    // 기준선 계산 (MediaPipe에서 y는 위로 갈수록 작아짐)
-    const shoulderY = (leftShoulder.y + rightShoulder.y) / 2;
-    const hipY = (leftHip.y + rightHip.y) / 2;
-    const bodyLength = hipY - shoulderY; // 어깨~엉덩이 길이 (정규화 기준)
-
-    // UP 기준: 손목이 어깨보다 위 (마진 포함 - 체형 대비 10%)
-    const upThresholdY = shoulderY - bodyLength * 0.1;
-    // DOWN 기준: 손목이 어깨보다 확실히 아래 (체형 대비 30%)
-    const downThresholdY = shoulderY + bodyLength * 0.3;
-
-    const leftWristUp = leftWrist.y < upThresholdY;
-    const rightWristUp = rightWrist.y < upThresholdY;
-    const leftWristDown = leftWrist.y > downThresholdY;
-    const rightWristDown = rightWrist.y > downThresholdY;
-
-    // 팔꿈치도 보조 지표로 활용 (팔꿈치가 어깨 위면 확실한 UP)
-    const elbowsUp = leftElbow.y < shoulderY && rightElbow.y < shoulderY;
-
-    // 가시성(Visibility) 확인
-    const visibility = [leftShoulder, rightShoulder, leftWrist, rightWrist, leftHip, rightHip]
-      .reduce((sum, lm) => sum + (lm.visibility || 0), 0) / 6;
-
-    // 포즈 상태 판별
-    let state = 'TRANSITIONING';
-    if ((leftWristUp && rightWristUp) || (elbowsUp && leftWristUp) || (elbowsUp && rightWristUp)) {
-      state = 'UP';   // 만세 자세 (팔이 어깨 위로 올라감)
-    } else if (leftWristDown && rightWristDown) {
-      state = 'DOWN'; // 내린 자세 (팔이 확실히 내려감)
-    }
-
-    // 디버그용: 손목 높이 (양수=어깨 위, 음수=어깨 아래)
-    const leftHeight = Math.round((shoulderY - leftWrist.y) * 100);
-    const rightHeight = Math.round((shoulderY - rightWrist.y) * 100);
-
+    // 기존 인터페이스 호환을 위해 필드 매핑
     return {
-      detected: true,
-      state,
+      detected: result.detected,
+      state: result.state,
       kneeAngle: 0,
-      leftKneeAngle: leftHeight,   // 디버그: 왼손목 높이
-      rightKneeAngle: rightHeight,  // 디버그: 오른손목 높이
-      confidence: Math.round(visibility * 100),
+      leftKneeAngle: result.leftDebugValue,
+      rightKneeAngle: result.rightDebugValue,
+      confidence: result.confidence,
     };
   }
 

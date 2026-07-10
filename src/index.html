@@ -6,6 +6,15 @@
   <meta name="description" content="실버스텝 - 시니어를 위한 AI 홈트레이닝 코치. 3m 거리에서 음성으로 안내받는 안전한 운동.">
   <title>실버스텝 Silver Step - AI 홈트레이닝</title>
 
+  <!-- PWA 메타 태그 -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#FF7043">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="실버스텝">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+
   <!-- 스타일 -->
   <link rel="stylesheet" href="css/style.css">
 
@@ -89,6 +98,23 @@
         <div class="guide-item">
           <span class="guide-icon">🔊</span>
           <span class="guide-text">음성 안내를 따라 운동해 주세요</span>
+        </div>
+      </div>
+
+      <!-- 운동 선택 -->
+      <div class="exercise-selector" id="exercise-selector">
+        <h2 class="selector-title">오늘의 운동을 선택하세요</h2>
+        <div class="exercise-cards">
+          <button class="exercise-card selected" id="card-manse" data-exercise="manse">
+            <span class="card-icon">🙌</span>
+            <span class="card-name">만세 운동</span>
+            <span class="card-desc">팔을 위로 올렸다 내려요</span>
+          </button>
+          <button class="exercise-card" id="card-knee-raise" data-exercise="knee_raise">
+            <span class="card-icon">🦵</span>
+            <span class="card-name">무릎 올리기</span>
+            <span class="card-desc">무릎을 번갈아 올려요</span>
+          </button>
         </div>
       </div>
 
@@ -177,11 +203,11 @@
         <span class="debug-value" id="debug-state">-</span>
       </div>
       <div class="debug-row">
-        <span class="debug-label">왼손목</span>
+        <span class="debug-label">왼쪽</span>
         <span class="debug-value" id="debug-knee-l">-</span>
       </div>
       <div class="debug-row">
-        <span class="debug-label">오른손목</span>
+        <span class="debug-label">오른쪽</span>
         <span class="debug-value" id="debug-knee-r">-</span>
       </div>
       <hr class="debug-divider">
@@ -195,5 +221,20 @@
 
   <!-- 앱 메인 로직 (ES Module) -->
   <script type="module" src="js/app.js"></script>
+
+  <!-- 서비스 워커 등록 (PWA) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => {
+            console.log('[PWA] 서비스 워커 등록 완료:', reg.scope);
+          })
+          .catch((err) => {
+            console.warn('[PWA] 서비스 워커 등록 실패:', err);
+          });
+      });
+    }
+  </script>
 </body>
 </html>

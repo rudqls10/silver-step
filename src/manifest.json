@@ -1,0 +1,27 @@
+{
+  "name": "실버스텝 - AI 홈트레이닝",
+  "short_name": "실버스텝",
+  "description": "시니어를 위한 AI 홈트레이닝 코치. 카메라로 자세를 인식하고 음성으로 안내합니다.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#FF7043",
+  "background_color": "#FFF9F2",
+  "lang": "ko",
+  "dir": "ltr",
+  "categories": ["health", "fitness", "lifestyle"],
+  "icons": [
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
