@@ -12,17 +12,17 @@ const CACHE_NAME = 'silver-step-v1';
 
 // 캐싱할 정적 파일 목록
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/css/style.css',
-  '/js/app.js',
-  '/js/audio.js',
-  '/js/counter.js',
-  '/js/exercises.js',
-  '/js/pose-mediapipe.js',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
-  '/manifest.json',
+  './',
+  './index.html',
+  './css/style.css',
+  './js/app.js',
+  './js/audio.js',
+  './js/counter.js',
+  './js/exercises.js',
+  './js/pose-mediapipe.js',
+  './icons/icon-192x192.png',
+  './icons/icon-512x512.png',
+  './manifest.json',
 ];
 
 // MediaPipe CDN (Network-First로 처리)
@@ -117,7 +117,7 @@ async function cacheFirst(request) {
   } catch (error) {
     console.warn('[SW] Cache-First 실패:', error);
     // 오프라인 폴백: 메인 페이지 반환
-    const cached = await caches.match('/');
+    const cached = await caches.match('./');
     if (cached) return cached;
     return new Response('오프라인 상태입니다.', { status: 503 });
   }
