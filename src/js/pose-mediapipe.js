@@ -127,14 +127,14 @@ export class MediaPipePoseDetector {
     this.ctx.clearRect(0, 0, width, height);
 
     if (this.blurBackground) {
-      // 블러 모드: 어두운 배경만 그리고 스켈레톤만 선명하게
-      this.ctx.fillStyle = 'rgba(10, 14, 23, 0.85)';
-      this.ctx.fillRect(0, 0, width, height);
-
-      // 반투명 카메라 이미지 (실루엣 느낌)
-      this.ctx.globalAlpha = 0.08;
+      // 블러 모드: 밝은 카메라 이미지에 가우시안 블러 적용
+      this.ctx.filter = 'blur(14px) brightness(1.4) saturate(1.1)';
       this.ctx.drawImage(results.image, 0, 0, width, height);
-      this.ctx.globalAlpha = 1.0;
+      this.ctx.filter = 'none';
+
+      // 밝은 반투명 오버레이 (프라이버시 보호 + 밝은 톤 유지)
+      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+      this.ctx.fillRect(0, 0, width, height);
     } else {
       // 일반 모드: 카메라 이미지 그대로
       this.ctx.drawImage(results.image, 0, 0, width, height);
