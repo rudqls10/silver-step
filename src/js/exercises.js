@@ -13,6 +13,7 @@
 export const ExerciseType = Object.freeze({
   MANSE:      'manse',       // 만세 운동
   KNEE_RAISE: 'knee_raise',  // 무릎 올리기 (제자리 걷기)
+  SQUAT:      'squat',       // 스쿼트
 });
 
 // ============================
@@ -164,6 +165,93 @@ export const EXERCISE_CONFIG = {
       // 디버그 값: 무릎 높이 비율 (% 단위, 작을수록 많이 올린 것)
       const leftDebug = Math.round(leftKneeRatio * 100);
       const rightDebug = Math.round(rightKneeRatio * 100);
+
+      return {
+        detected: true,
+        state,
+        leftDebugValue: leftDebug,
+        rightDebugValue: rightDebug,
+        confidence: Math.round(visibility * 100),
+      };
+    },
+
+    /** 강조할 관절 인덱스 (엉덩이, 무릎, 발목) */
+    highlightJoints: [23, 24, 25, 26, 27, 28],
+  },
+
+  // ---------------------------
+  // 스쿼트
+  // ---------------------------
+  [ExerciseType.SQUAT]: {
+    name: '스쿼트',
+    icon: '🏋️',
+    description: '천천히 앉았다 일어나요',
+    waitingPose: 'UP',           // 대기 시 서 있는 자세
+    waitingMessage: '편하게 서 주세요',
+    debugLabels: { left: '왼무릎각', right: '오른무릎각' },
+
+    /**
+     * 스쿼트 동작 분석
+     * - UP: 서 있는 자세 (무릎 각도 > 155°)
+     * - DOWN: 앉은 자세 (무릎 각도 < 130°, 시니어 반스쿼트 기준)
+     *
+     * 랜드마크 인덱스:
+     *   23/24: 엉덩이 (hip)
+     *   25/26: 무릎 (knee)
+     *   27/28: 발목 (ankle)
+     *
+     * @param {Array} landmarks - MediaPipe 33개 관절 랜드마크
+     * @returns {Object} 포즈 상태
+     */
+    analyze(landmarks) {
+      const leftHip = landmarks[23];
+      const rightHip = landmarks[24];
+      const leftKnee = landmarks[25];
+      const rightKnee = landmarks[26];
+      const leftAnkle = landmarks[27];
+      const rightAnkle = landmarks[28];
+
+      /**
+       * 세 점 사이의 각도 계산 (도 단위)
+       * @param {Object} a - 첫 번째 점 (hip)
+       * @param {Object} b - 꼭짓점 (knee)
+       * @param {Object} c - 세 번째 점 (ankle)
+       * @returns {number} 각도 (0~180)
+       */
+      function calcAngle(a, b, c) {
+        const ba = { x: a.x - b.x, y: a.y - b.y };
+        const bc = { x: c.x - b.x, y: c.y - b.y };
+        const dot = ba.x * bc.x + ba.y * bc.y;
+        const magBA = Math.sqrt(ba.x * ba.x + ba.y * ba.y);
+        const magBC = Math.sqrt(bc.x * bc.x + bc.y * bc.y);
+        if (magBA === 0 || magBC === 0) return 180;
+        const cosAngle = Math.max(-1, Math.min(1, dot / (magBA * magBC)));
+        return Math.acos(cosAngle) * (180 / Math.PI);
+      }
+
+      const leftKneeAngle = calcAngle(leftHip, leftKnee, leftAnkle);
+      const rightKneeAngle = calcAngle(rightHip, rightKnee, rightAnkle);
+      const avgKneeAngle = (leftKneeAngle + rightKneeAngle) / 2;
+
+      // 시니어 친화적 임계값 (반스쿼트 허용)
+      const UP_THRESHOLD = 155;    // 이 각도 이상이면 서 있는 것
+      const DOWN_THRESHOLD = 130;  // 이 각도 이하면 앉은 것
+
+      // 가시성 평균
+      const visibility = [leftHip, rightHip, leftKnee, rightKnee, leftAnkle, rightAnkle]
+        .reduce((sum, lm) => sum + (lm.visibility || 0), 0) / 6;
+
+      // 상태 판별
+      let state = 'TRANSITIONING';
+      if (avgKneeAngle >= UP_THRESHOLD) {
+        state = 'UP';    // 서 있음
+      } else if (avgKneeAngle <= DOWN_THRESHOLD) {
+        state = 'DOWN';  // 앉음
+      }
+
+      // 디버그 값: 무릎 각도
+      const leftDebug = Math.round(leftKneeAngle);
+      const rightDebug = Math.round(rightKneeAngle);
 
       return {
         detected: true,
