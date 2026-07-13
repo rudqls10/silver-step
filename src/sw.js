@@ -8,7 +8,7 @@
  *   - 기타: Network-First with fallback
  */
 
-const CACHE_NAME = 'silver-step-v2';
+const CACHE_NAME = 'silver-step-v3';
 
 // 캐싱할 정적 파일 목록
 const STATIC_ASSETS = [
