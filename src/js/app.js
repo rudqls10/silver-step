@@ -86,57 +86,67 @@ class SilverStepApp {
       onCountBeep: () => this.audio.playCountBeep(),
     });
 
-    // 포즈 감지기 초기화
-    const video = this.dom.video;
-    const canvas = this.dom.canvas;
-    this.detector = new MediaPipePoseDetector(video, canvas, {
-      drawSkeleton: true,
-      blurBackground: true,  // 2주차: 프라이버시 블러 기본 활성화
-      onPoseState: (state) => this._onPoseState(state),
-      onFpsUpdate: (fps) => this._onFpsUpdate(fps),
-    });
-
-    try {
-      await this.detector.init();
-    } catch (error) {
-      console.error('[App] MediaPipe 초기화 실패:', error);
-      this._showError('AI 모델 로딩에 실패했습니다. 페이지를 새로고침해 주세요.');
-      return;
-    }
-
-    // 운동 선택 카드 이벤트
+    // ★ 이벤트를 먼저 바인딩 (MediaPipe 실패해도 버튼 동작하도록)
     this._bindExerciseCards();
-
-    // 시작 버튼 이벤트
     this.dom.startButton.addEventListener('click', () => this.start());
     this.dom.restartButton.addEventListener('click', () => this.restart());
-
-    // 자녀 알림 버튼 이벤트
     if (this.dom.notifyButton) {
       this.dom.notifyButton.addEventListener('click', () => this._sendNotification());
     }
-
-    // 에러 재시도 버튼
     if (this.dom.errorRetryButton) {
       this.dom.errorRetryButton.addEventListener('click', () => this._retryFromError());
     }
 
     // 초기 상태 설정
     this._setState(AppState.IDLE);
-    this._updateMessage('운동을 선택하고 시작 버튼을 눌러주세요');
 
-    console.log('[App] 초기화 완료');
+    // 포즈 감지기 초기화
+    const video = this.dom.video;
+    const canvas = this.dom.canvas;
+    this.detector = new MediaPipePoseDetector(video, canvas, {
+      drawSkeleton: true,
+      blurBackground: true,
+      onPoseState: (state) => this._onPoseState(state),
+      onFpsUpdate: (fps) => this._onFpsUpdate(fps),
+    });
+
+    // MediaPipe 모델 로딩 (모바일에서 시간이 걸릴 수 있음)
+    this._updateMessage('AI 모델을 불러오는 중... 잠시만 기다려 주세요 🙏');
+    try {
+      await this.detector.init();
+      this._mediaPipeReady = true;
+      this._updateMessage('운동을 선택하고 시작 버튼을 눌러주세요');
+      console.log('[App] 초기화 완료');
+    } catch (error) {
+      console.error('[App] MediaPipe 초기화 실패:', error);
+      this._mediaPipeReady = false;
+      this._updateMessage('AI 모델 로딩에 실패했습니다. 시작 버튼을 다시 눌러주세요.');
+    }
   }
 
   /**
    * 앱 시작 (시작 버튼 클릭 후)
    */
   async start() {
+    // MediaPipe가 아직 준비 안 됐으면 재시도
+    if (!this._mediaPipeReady) {
+      this._updateMessage('AI 모델을 불러오는 중... 잠시만 기다려 주세요 🙏');
+      try {
+        await this.detector.init();
+        this._mediaPipeReady = true;
+      } catch (error) {
+        console.error('[App] MediaPipe 재초기화 실패:', error);
+        this._showError('AI 모델을 불러올 수 없습니다. 인터넷 연결을 확인하고 페이지를 새로고침해 주세요.');
+        return;
+      }
+    }
+
     try {
       // 선택된 운동 타입을 감지기에 설정
       this.detector.setExerciseType(this.currentExercise);
 
       // 카메라 시작
+      this._updateMessage('카메라를 연결하는 중...');
       await this.detector.start();
       this.detector.resizeCanvas();
     } catch (error) {
@@ -708,6 +718,46 @@ class SilverStepApp {
     const s = seconds % 60;
     if (m > 0) return `${m}분 ${s}초`;
     return `${s}초`;
+  }
+
+  /**
+   * 에러 화면 표시
+   * @param {string} message - 에러 메시지
+   * @private
+   */
+  _showError(message) {
+    console.error('[App] 에러 표시:', message);
+    if (this.dom.errorScreen) {
+      if (this.dom.errorMessage) {
+        this.dom.errorMessage.textContent = message;
+      }
+      this.dom.errorScreen.classList.add('active');
+    } else {
+      // 에러 화면이 없으면 메시지로 표시
+      this._updateMessage(`⚠️ ${message}`);
+      alert(message);
+    }
+  }
+
+  /**
+   * 에러에서 재시도
+   * @private
+   */
+  async _retryFromError() {
+    if (this.dom.errorScreen) {
+      this.dom.errorScreen.classList.remove('active');
+    }
+    // 앱 전체 재초기화
+    this._mediaPipeReady = false;
+    this._updateMessage('다시 시도하는 중...');
+    try {
+      await this.detector.init();
+      this._mediaPipeReady = true;
+      this._updateMessage('운동을 선택하고 시작 버튼을 눌러주세요');
+    } catch (error) {
+      console.error('[App] 재시도 실패:', error);
+      this._showError('다시 실패했습니다. 인터넷 연결을 확인하고 페이지를 새로고침해 주세요.');
+    }
   }
 }
 

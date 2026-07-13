@@ -86,13 +86,14 @@ export class MediaPipePoseDetector {
 
     this.pose.onResults((results) => this._onResults(results));
 
-    // 카메라 연결
+    // 카메라 연결 (모바일: 전면 카메라 사용)
     this.camera = new Camera(this.video, {
       onFrame: async () => {
         if (this.isRunning) {
           await this.pose.send({ image: this.video });
         }
       },
+      facingMode: 'user',  // 전면 카메라
       width: 640,
       height: 480,
     });
