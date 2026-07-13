@@ -105,7 +105,7 @@ class SilverStepApp {
     const canvas = this.dom.canvas;
     this.detector = new MediaPipePoseDetector(video, canvas, {
       drawSkeleton: true,
-      blurBackground: true,
+      blurBackground: false,
       onPoseState: (state) => this._onPoseState(state),
       onFpsUpdate: (fps) => this._onFpsUpdate(fps),
     });
