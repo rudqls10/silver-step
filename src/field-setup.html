@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="실버스텝 현장 세팅 위저드 - 시니어 댁 방문 시 원클릭 설정">
+  <title>실버스텝 - 현장 세팅</title>
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#FF7043">
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+    /* Reset */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-primary: #FFF9F2;
+      --bg-card: rgba(255, 255, 255, 0.92);
+      --text-primary: #3D3028;
+      --text-secondary: #8B7A6B;
+      --accent-coral: #FF7043;
+      --accent-green: #4CAF50;
+      --accent-gold: #FFB74D;
+      --accent-blue: #42A5F5;
+      --accent-red: #EF5350;
+      --gradient-warm: linear-gradient(135deg, #FF7043 0%, #FFB74D 100%);
+      --gradient-fresh: linear-gradient(135deg, #81C784 0%, #4CAF50 100%);
+      --shadow-md: 0 4px 16px rgba(61, 48, 40, 0.08);
+      --shadow-lg: 0 8px 32px rgba(61, 48, 40, 0.1);
+      --radius-md: 18px;
+      --radius-lg: 24px;
+    }
+
+    html, body {
+      width: 100%; min-height: 100vh;
+      font-family: 'Noto Sans KR', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+
+    /* ========================
+       Layout
+       ======================== */
+    .wizard-container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .wizard-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .wizard-logo { font-size: 48px; margin-bottom: 8px; }
+    .wizard-title {
+      font-size: 28px;
+      font-weight: 900;
+      background: var(--gradient-warm);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .wizard-subtitle {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* Progress Bar */
+    .progress-track {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 32px;
+      padding: 0 8px;
+    }
+
+    .progress-step {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: #E8E0D8;
+      transition: background 0.5s ease;
+    }
+
+    .progress-step.done { background: var(--accent-green); }
+    .progress-step.active {
+      background: var(--gradient-warm);
+      animation: progressPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes progressPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .progress-label {
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    /* Steps */
+    .step {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      animation: stepFadeIn 0.4s ease;
+    }
+
+    .step.active { display: flex; }
+
+    @keyframes stepFadeIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .step-icon { font-size: 64px; text-align: center; margin-bottom: 16px; }
+    .step-title {
+      font-size: 24px;
+      font-weight: 900;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .step-desc {
+      font-size: 16px;
+      text-align: center;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+
+    /* Form Fields */
+    .field-group { margin-bottom: 20px; }
+    .field-label {
+      display: block;
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+    .field-input {
+      width: 100%;
+      padding: 16px 20px;
+      font-size: 20px;
+      font-family: inherit;
+      border: 2px solid #E8E0D8;
+      border-radius: var(--radius-md);
+      background: white;
+      color: var(--text-primary);
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .field-input:focus {
+      outline: none;
+      border-color: var(--accent-coral);
+      box-shadow: 0 0 0 4px rgba(255, 112, 67, 0.12);
+    }
+    .field-input::placeholder { color: #C8BDB2; }
+    .field-hint {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      display: block;
+      width: 100%;
+      padding: 18px;
+      font-size: 20px;
+      font-weight: 700;
+      font-family: inherit;
+      color: white;
+      background: var(--gradient-warm);
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      box-shadow: var(--shadow-md);
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-top: auto;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      font-size: 18px;
+      font-weight: 700;
+      font-family: inherit;
+      color: var(--accent-coral);
+      background: rgba(255, 112, 67, 0.08);
+      border: 2px solid rgba(255, 112, 67, 0.2);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 12px;
+    }
+    .btn-secondary:hover { background: rgba(255, 112, 67, 0.15); }
+
+    .btn-green {
+      background: var(--gradient-fresh);
+    }
+
+    /* Test Cards */
+    .test-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-md);
+      text-align: center;
+    }
+
+    .test-card-icon { font-size: 48px; margin-bottom: 12px; }
+    .test-card-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .test-card-desc { font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; }
+
+    .test-status {
+      display: inline-block;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .test-status.pending { background: #F5F0EB; color: var(--text-secondary); }
+    .test-status.testing { background: #FFF3E0; color: #E65100; animation: progressPulse 1s infinite; }
+    .test-status.pass { background: #E8F5E9; color: #2E7D32; }
+    .test-status.fail { background: #FFEBEE; color: #C62828; }
+
+    /* Camera Preview */
+    .camera-preview-container {
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: #222;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .camera-preview-container video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .camera-overlay-msg {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 16px;
+      text-align: center;
+      background: rgba(0,0,0,0.5);
+      padding: 12px 24px;
+      border-radius: 12px;
+    }
+
+    /* Volume Test */
+    .volume-bar-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .volume-bar {
+      flex: 1;
+      height: 12px;
+      background: #E8E0D8;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .volume-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--gradient-fresh);
+      border-radius: 6px;
+      transition: width 0.3s;
+    }
+    .volume-icon { font-size: 28px; }
+
+    /* Complete Screen */
+    .complete-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      padding: 32px 24px;
+      box-shadow: var(--shadow-lg);
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .complete-check {
+      width: 80px; height: 80px;
+      background: var(--gradient-fresh);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      margin: 0 auto 16px;
+      animation: completePopIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes completePopIn {
+      from { transform: scale(0); }
+      to   { transform: scale(1); }
+    }
+
+    .complete-title {
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+    .complete-desc {
+      font-size: 16px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .settings-summary {
+      background: #F9F4EF;
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      margin: 20px 0;
+      text-align: left;
+    }
+    .settings-summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 15px;
+      border-bottom: 1px solid #EDE7E0;
+    }
+    .settings-summary-row:last-child { border-bottom: none; }
+    .settings-summary-label { color: var(--text-secondary); }
+    .settings-summary-value { font-weight: 700; }
+
+    /* PWA Install Card */
+    .pwa-install-guide {
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      box-shadow: var(--shadow-md);
+      margin-bottom: 16px;
+    }
+    .pwa-install-guide h3 {
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+    .pwa-step-list {
+      list-style: none;
+      counter-reset: pwa-steps;
+    }
+    .pwa-step-list li {
+      counter-increment: pwa-steps;
+      padding: 10px 0 10px 36px;
+      position: relative;
+      font-size: 15px;
+      color: var(--text-primary);
+      border-bottom: 1px solid #F0EBE6;
+    }
+    .pwa-step-list li:last-child { border-bottom: none; }
+    .pwa-step-list li::before {
+      content: counter(pwa-steps);
+      position: absolute;
+      left: 0; top: 10px;
+      width: 24px; height: 24px;
+      background: var(--accent-coral);
+      color: white;
+      border-radius: 50%;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* URL params banner */
+    .url-params-banner {
+      background: #E8F5E9;
+      border: 1px solid #C8E6C9;
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #2E7D32;
+      display: none;
+    }
+    .url-params-banner.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="wizard-container">
+
+    <!-- Header -->
+    <div class="wizard-header">
+      <div class="wizard-logo">🚶‍♂️</div>
+      <div class="wizard-title">실버스텝 세팅</div>
+      <div class="wizard-subtitle">어르신 댁 방문 시 원클릭 설정</div>
+    </div>
+
+    <!-- URL Params Banner -->
+    <div class="url-params-banner" id="url-params-banner">
+      ✅ URL에서 설정이 자동으로 입력되었습니다
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-track" id="progress-track">
+      <div class="progress-step active" data-step="1"></div>
+      <div class="progress-step" data-step="2"></div>
+      <div class="progress-step" data-step="3"></div>
+      <div class="progress-step" data-step="4"></div>
+      <div class="progress-step" data-step="5"></div>
+    </div>
+    <div class="progress-label" id="progress-label">1단계 / 5단계</div>
+
+    <!-- ========================
+         Step 1: 이름 입력
+         ======================== -->
+    <div class="step active" id="step-1">
+      <div class="step-icon">👤</div>
+      <div class="step-title">이름을 입력해 주세요</div>
+      <div class="step-desc">어르신과 자녀분의 이름을 입력하면<br>맞춤 안내가 제공됩니다</div>
+
+      <div class="field-group">
+        <label class="field-label" for="setup-senior-name">어르신 이름</label>
+        <input type="text" class="field-input" id="setup-senior-name" placeholder="예: 홍길동" autocomplete="name">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="setup-child-name">자녀 이름</label>
+        <input type="text" class="field-input" id="setup-child-name" placeholder="예: 홍영희" autocomplete="name">
+      </div>
+
+      <button class="btn-primary" id="btn-step1-next">다음 단계로 →</button>
+    </div>
+
+    <!-- ========================
+         Step 2: 웹훅 URL 설정
+         ======================== -->
+    <div class="step" id="step-2">
+      <div class="step-icon">📡</div>
+      <div class="step-title">알림 연동 설정</div>
+      <div class="step-desc">운동이 끝나면 자녀에게<br>카카오톡 알림을 보낼 수 있어요</div>
+
+      <div class="field-group">
+        <label class="field-label" for="setup-webhook-url">Make 웹훅 URL</label>
+        <input type="url" class="field-input" id="setup-webhook-url" placeholder="https://hook.make.com/..." autocomplete="off">
+        <div class="field-hint">Make(Integromat) 시나리오의 웹훅 URL을 입력하세요. 없으면 비워두셔도 됩니다.</div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="setup-target-count">목표 운동 횟수</label>
+        <select class="field-input" id="setup-target-count" style="appearance: auto;">
+          <option value="3">3회 (테스트용)</option>
+          <option value="5">5회 (가벼운 운동)</option>
+          <option value="10" selected>10회 (권장)</option>
+          <option value="15">15회</option>
+          <option value="20">20회</option>
+        </select>
+      </div>
+
+      <button class="btn-primary" id="btn-step2-next">다음 단계로 →</button>
+      <button class="btn-secondary" id="btn-step2-back">← 이전으로</button>
+    </div>
+
+    <!-- ========================
+         Step 3: 카메라 테스트
+         ======================== -->
+    <div class="step" id="step-3">
+      <div class="step-icon">📷</div>
+      <div class="step-title">카메라 테스트</div>
+      <div class="step-desc">카메라가 잘 작동하는지<br>미리 확인합니다</div>
+
+      <div class="test-card">
+        <div class="camera-preview-container" id="camera-preview-container">
+          <video id="camera-test-video" autoplay playsinline muted></video>
+          <div class="camera-overlay-msg" id="camera-overlay-msg">카메라 준비 중...</div>
+        </div>
+        <div class="test-status pending" id="camera-test-status">⏳ 테스트 대기 중</div>
+      </div>
+
+      <button class="btn-primary" id="btn-camera-test">📷 카메라 테스트 시작</button>
+      <button class="btn-primary btn-green" id="btn-step3-next" style="display:none;">✅ 카메라 확인 완료 — 다음으로 →</button>
+      <button class="btn-secondary" id="btn-step3-back">← 이전으로</button>
+    </div>
+
+    <!-- ========================
+         Step 4: 음성/볼륨 테스트
+         ======================== -->
+    <div class="step" id="step-4">
+      <div class="step-icon">🔊</div>
+      <div class="step-title">음성 테스트</div>
+      <div class="step-desc">3m 거리에서도 음성이<br>잘 들리는지 확인합니다</div>
+
+      <div class="test-card">
+        <div class="test-card-icon">🗣️</div>
+        <div class="test-card-title">음성 안내 테스트</div>
+        <div class="test-card-desc">아래 버튼을 누르고 3m 떨어져서<br>음성이 들리는지 확인해 주세요</div>
+
+        <div class="volume-bar-container">
+          <span class="volume-icon">🔈</span>
+          <div class="volume-bar">
+            <div class="volume-bar-fill" id="volume-bar-fill"></div>
+          </div>
+          <span class="volume-icon">🔊</span>
+        </div>
+
+        <div class="test-status pending" id="volume-test-status">⏳ 테스트 대기 중</div>
+      </div>
+
+      <button class="btn-primary" id="btn-volume-test">🔊 음성 테스트 재생</button>
+      <button class="btn-primary btn-green" id="btn-step4-next" style="display:none;">✅ 음성 확인 완료 — 다음으로 →</button>
+      <button class="btn-secondary" id="btn-volume-louder" style="display:none;">🔊 볼륨 더 높이기 안내</button>
+      <button class="btn-secondary" id="btn-step4-back">← 이전으로</button>
+    </div>
+
+    <!-- ========================
+         Step 5: 완료
+         ======================== -->
+    <div class="step" id="step-5">
+      <div class="step-icon">🎉</div>
+      <div class="step-title">설정 완료!</div>
+      <div class="step-desc">모든 설정이 저장되었습니다</div>
+
+      <div class="complete-card">
+        <div class="complete-check">✓</div>
+        <div class="complete-title">세팅이 끝났습니다</div>
+        <div class="complete-desc">
+          이제 실버스텝 앱을 열면<br>
+          바로 운동을 시작할 수 있어요!
+        </div>
+
+        <div class="settings-summary" id="settings-summary">
+          <div class="settings-summary-row">
+            <span class="settings-summary-label">어르신 이름</span>
+            <span class="settings-summary-value" id="summary-senior">-</span>
+          </div>
+          <div class="settings-summary-row">
+            <span class="settings-summary-label">자녀 이름</span>
+            <span class="settings-summary-value" id="summary-child">-</span>
+          </div>
+          <div class="settings-summary-row">
+            <span class="settings-summary-label">목표 횟수</span>
+            <span class="settings-summary-value" id="summary-target">10회</span>
+          </div>
+          <div class="settings-summary-row">
+            <span class="settings-summary-label">알림 연동</span>
+            <span class="settings-summary-value" id="summary-webhook">미설정</span>
+          </div>
+          <div class="settings-summary-row">
+            <span class="settings-summary-label">카메라</span>
+            <span class="settings-summary-value" id="summary-camera">-</span>
+          </div>
+          <div class="settings-summary-row">
+            <span class="settings-summary-label">음성</span>
+            <span class="settings-summary-value" id="summary-volume">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PWA Install Guide -->
+      <div class="pwa-install-guide">
+        <h3>📱 홈 화면에 추가하기</h3>
+        <ol class="pwa-step-list">
+          <li>브라우저 메뉴 (⋮) 버튼을 누르세요</li>
+          <li>"홈 화면에 추가"를 선택하세요</li>
+          <li>"추가" 버튼을 누르면 완료!</li>
+          <li>홈 화면의 실버스텝 아이콘을 터치하면<br>바로 운동을 시작할 수 있어요</li>
+        </ol>
+      </div>
+
+      <a href="index.html" style="text-decoration:none;">
+        <button class="btn-primary btn-green" style="width:100%;">🚶‍♂️ 실버스텝 앱 열기</button>
+      </a>
+      <button class="btn-secondary" id="btn-step5-back">← 설정 다시 하기</button>
+    </div>
+
+  </div>
+
+  <script>
+    // ============================
+    // Field Setup Wizard Logic
+    // ============================
+
+    class FieldSetupWizard {
+      constructor() {
+        this.currentStep = 1;
+        this.totalSteps = 5;
+        this.cameraStream = null;
+        this.cameraTestPassed = false;
+        this.volumeTestPassed = false;
+
+        // localStorage keys (same as WebhookManager)
+        this.STORAGE_KEYS = {
+          WEBHOOK_URL:   'silverstep_webhook_url',
+          SENIOR_NAME:   'silverstep_senior_name',
+          CHILD_NAME:    'silverstep_child_name',
+          TARGET_COUNT:  'silverstep_target_count',
+          AUTO_NOTIFY:   'silverstep_auto_notify',
+          AUTO_START:    'silverstep_auto_start',
+        };
+
+        this._init();
+      }
+
+      _init() {
+        // Parse URL parameters
+        this._parseUrlParams();
+
+        // Bind events
+        document.getElementById('btn-step1-next').addEventListener('click', () => this._goStep(2));
+        document.getElementById('btn-step2-next').addEventListener('click', () => this._goStep(3));
+        document.getElementById('btn-step2-back').addEventListener('click', () => this._goStep(1));
+        document.getElementById('btn-camera-test').addEventListener('click', () => this._testCamera());
+        document.getElementById('btn-step3-next').addEventListener('click', () => {
+          this._stopCamera();
+          this._goStep(4);
+        });
+        document.getElementById('btn-step3-back').addEventListener('click', () => {
+          this._stopCamera();
+          this._goStep(2);
+        });
+        document.getElementById('btn-volume-test').addEventListener('click', () => this._testVolume());
+        document.getElementById('btn-step4-next').addEventListener('click', () => {
+          this._saveAllSettings();
+          this._goStep(5);
+        });
+        document.getElementById('btn-step4-back').addEventListener('click', () => this._goStep(3));
+        document.getElementById('btn-step5-back').addEventListener('click', () => this._goStep(1));
+        document.getElementById('btn-volume-louder').addEventListener('click', () => {
+          alert('스마트폰 옆면의 볼륨 버튼을 눌러 최대로 올려주세요.');
+        });
+      }
+
+      // ============================
+      // URL Parameter Parsing
+      // ============================
+      _parseUrlParams() {
+        const params = new URLSearchParams(window.location.search);
+        let hasParams = false;
+
+        if (params.get('senior')) {
+          document.getElementById('setup-senior-name').value = params.get('senior');
+          hasParams = true;
+        }
+        if (params.get('child')) {
+          document.getElementById('setup-child-name').value = params.get('child');
+          hasParams = true;
+        }
+        if (params.get('webhook')) {
+          document.getElementById('setup-webhook-url').value = params.get('webhook');
+          hasParams = true;
+        }
+        if (params.get('target')) {
+          const target = params.get('target');
+          const select = document.getElementById('setup-target-count');
+          for (const opt of select.options) {
+            if (opt.value === target) { opt.selected = true; break; }
+          }
+          hasParams = true;
+        }
+
+        if (hasParams) {
+          document.getElementById('url-params-banner').classList.add('visible');
+        }
+      }
+
+      // ============================
+      // Step Navigation
+      // ============================
+      _goStep(step) {
+        // Hide current step
+        document.getElementById(`step-${this.currentStep}`).classList.remove('active');
+        // Show target step
+        document.getElementById(`step-${step}`).classList.remove('active');
+        // Re-trigger animation
+        void document.getElementById(`step-${step}`).offsetHeight;
+        document.getElementById(`step-${step}`).classList.add('active');
+
+        this.currentStep = step;
+
+        // Update progress
+        document.querySelectorAll('.progress-step').forEach((el, i) => {
+          el.classList.remove('active', 'done');
+          if (i + 1 < step) el.classList.add('done');
+          else if (i + 1 === step) el.classList.add('active');
+        });
+
+        document.getElementById('progress-label').textContent = `${step}단계 / ${this.totalSteps}단계`;
+
+        // Complete step: build summary
+        if (step === 5) {
+          this._buildSummary();
+        }
+
+        // Scroll to top
+        window.scrollTo(0, 0);
+      }
+
+      // ============================
+      // Camera Test
+      // ============================
+      async _testCamera() {
+        const statusEl = document.getElementById('camera-test-status');
+        const overlayEl = document.getElementById('camera-overlay-msg');
+        const testBtn = document.getElementById('btn-camera-test');
+        const nextBtn = document.getElementById('btn-step3-next');
+        const video = document.getElementById('camera-test-video');
+
+        statusEl.className = 'test-status testing';
+        statusEl.textContent = '🔄 카메라 연결 중...';
+        overlayEl.style.display = 'none';
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: false,
+          });
+          this.cameraStream = stream;
+          video.srcObject = stream;
+
+          statusEl.className = 'test-status pass';
+          statusEl.textContent = '✅ 카메라가 정상 작동합니다!';
+          this.cameraTestPassed = true;
+
+          testBtn.style.display = 'none';
+          nextBtn.style.display = 'block';
+        } catch (err) {
+          console.error('Camera test failed:', err);
+          overlayEl.textContent = '카메라를 사용할 수 없습니다';
+          overlayEl.style.display = 'block';
+          statusEl.className = 'test-status fail';
+          statusEl.textContent = '❌ 카메라 권한을 허용해 주세요';
+
+          testBtn.textContent = '🔄 다시 시도';
+        }
+      }
+
+      _stopCamera() {
+        if (this.cameraStream) {
+          this.cameraStream.getTracks().forEach(t => t.stop());
+          this.cameraStream = null;
+        }
+      }
+
+      // ============================
+      // Volume Test
+      // ============================
+      async _testVolume() {
+        const statusEl = document.getElementById('volume-test-status');
+        const testBtn = document.getElementById('btn-volume-test');
+        const nextBtn = document.getElementById('btn-step4-next');
+        const louderBtn = document.getElementById('btn-volume-louder');
+        const fillEl = document.getElementById('volume-bar-fill');
+
+        statusEl.className = 'test-status testing';
+        statusEl.textContent = '🔊 음성을 재생합니다...';
+
+        // Animate volume bar
+        fillEl.style.width = '30%';
+        setTimeout(() => fillEl.style.width = '60%', 500);
+        setTimeout(() => fillEl.style.width = '100%', 1000);
+
+        // Use TTS
+        try {
+          const synth = window.speechSynthesis;
+          synth.cancel();
+
+          const utterance = new SpeechSynthesisUtterance('안녕하세요. 실버스텝입니다. 이 소리가 잘 들리시나요?');
+          utterance.lang = 'ko-KR';
+          utterance.rate = 0.85;
+          utterance.volume = 1.0;
+
+          // Find Korean voice
+          const voices = synth.getVoices();
+          const korVoice = voices.find(v => v.lang === 'ko-KR' && v.name.includes('Google'))
+                        || voices.find(v => v.lang.startsWith('ko'))
+                        || voices[0];
+          if (korVoice) utterance.voice = korVoice;
+
+          utterance.onend = () => {
+            statusEl.className = 'test-status pass';
+            statusEl.textContent = '✅ 음성 재생 완료!';
+            this.volumeTestPassed = true;
+
+            testBtn.textContent = '🔊 다시 재생';
+            nextBtn.style.display = 'block';
+            louderBtn.style.display = 'block';
+          };
+
+          utterance.onerror = () => {
+            statusEl.className = 'test-status fail';
+            statusEl.textContent = '⚠️ 음성 재생 실패';
+            nextBtn.style.display = 'block'; // Allow proceeding anyway
+          };
+
+          synth.speak(utterance);
+        } catch (e) {
+          console.error('Volume test error:', e);
+          statusEl.className = 'test-status fail';
+          statusEl.textContent = '⚠️ 음성 기능을 지원하지 않습니다';
+          nextBtn.style.display = 'block';
+        }
+      }
+
+      // ============================
+      // Save Settings
+      // ============================
+      _saveAllSettings() {
+        const seniorName = document.getElementById('setup-senior-name').value.trim() || '어르신';
+        const childName = document.getElementById('setup-child-name').value.trim() || '자녀';
+        const webhookUrl = document.getElementById('setup-webhook-url').value.trim();
+        const targetCount = document.getElementById('setup-target-count').value;
+
+        localStorage.setItem(this.STORAGE_KEYS.SENIOR_NAME, seniorName);
+        localStorage.setItem(this.STORAGE_KEYS.CHILD_NAME, childName);
+        localStorage.setItem(this.STORAGE_KEYS.WEBHOOK_URL, webhookUrl);
+        localStorage.setItem(this.STORAGE_KEYS.TARGET_COUNT, targetCount);
+        localStorage.setItem(this.STORAGE_KEYS.AUTO_NOTIFY, 'true');
+        localStorage.setItem(this.STORAGE_KEYS.AUTO_START, 'true');
+
+        console.log('[FieldSetup] Settings saved:', { seniorName, childName, webhookUrl, targetCount });
+      }
+
+      // ============================
+      // Summary
+      // ============================
+      _buildSummary() {
+        const senior = document.getElementById('setup-senior-name').value.trim() || '어르신';
+        const child = document.getElementById('setup-child-name').value.trim() || '자녀';
+        const webhook = document.getElementById('setup-webhook-url').value.trim();
+        const target = document.getElementById('setup-target-count').value;
+
+        document.getElementById('summary-senior').textContent = senior;
+        document.getElementById('summary-child').textContent = child;
+        document.getElementById('summary-target').textContent = `${target}회`;
+        document.getElementById('summary-webhook').textContent = webhook ? '✅ 설정됨' : '⚠️ 미설정 (시뮬레이션)';
+        document.getElementById('summary-camera').textContent = this.cameraTestPassed ? '✅ 정상' : '⚠️ 미테스트';
+        document.getElementById('summary-volume').textContent = this.volumeTestPassed ? '✅ 정상' : '⚠️ 미테스트';
+      }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      new FieldSetupWizard();
+    });
+  </script>
+</body>
+</html>

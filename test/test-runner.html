@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>실버스텝 - 개발자 테스트 대시보드</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      color: #FFB74D;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      color: #888;
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #16213e;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .card h2 {
+      font-size: 18px;
+      margin-bottom: 16px;
+      color: #42A5F5;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card h2 .icon { font-size: 22px; }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .status-row:last-child { border-bottom: none; }
+    .status-label { color: #aaa; font-size: 14px; }
+    .status-value { font-weight: 700; font-size: 14px; }
+    .status-value.ok { color: #4CAF50; }
+    .status-value.warn { color: #FFB74D; }
+    .status-value.error { color: #EF5350; }
+    .status-value.info { color: #42A5F5; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin: 4px;
+    }
+
+    .btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary { background: #42A5F5; color: #fff; }
+    .btn-success { background: #4CAF50; color: #fff; }
+    .btn-warning { background: #FFB74D; color: #1a1a2e; }
+    .btn-danger { background: #EF5350; color: #fff; }
+    .btn-outline { background: transparent; color: #888; border: 1px solid #444; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .actions { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .log-area {
+      background: #0d1117;
+      border-radius: 10px;
+      padding: 16px;
+      margin-top: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #8b949e;
+    }
+
+    .log-entry { padding: 2px 0; }
+    .log-entry.success { color: #4CAF50; }
+    .log-entry.error { color: #EF5350; }
+    .log-entry.info { color: #42A5F5; }
+    .log-entry.warn { color: #FFB74D; }
+    .log-entry .timestamp { color: #555; margin-right: 8px; }
+
+    .empty-state {
+      text-align: center;
+      padding: 20px;
+      color: #555;
+      font-size: 14px;
+    }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .history-item .exercise-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .history-item .exercise-icon { font-size: 18px; }
+    .history-item .exercise-details { color: #aaa; font-size: 12px; }
+    .history-item .notify-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    .history-item .notify-badge.sent { background: rgba(76,175,80,0.2); color: #4CAF50; }
+    .history-item .notify-badge.not-sent { background: rgba(139,148,158,0.2); color: #8b949e; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge.online { background: rgba(76,175,80,0.2); color: #4CAF50; }
+    .badge.offline { background: rgba(239,83,80,0.2); color: #EF5350; }
+
+    .result-area {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      display: none;
+    }
+    .result-area.show { display: block; }
+    .result-area.success { background: rgba(76,175,80,0.1); border: 1px solid rgba(76,175,80,0.3); color: #4CAF50; }
+    .result-area.error { background: rgba(239,83,80,0.1); border: 1px solid rgba(239,83,80,0.3); color: #EF5350; }
+    .result-area.info { background: rgba(66,165,245,0.1); border: 1px solid rgba(66,165,245,0.3); color: #42A5F5; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🔬 실버스텝 개발자 테스트 대시보드</h1>
+    <p>3주차 알파 테스트용 · <span id="current-time"></span></p>
+  </div>
+
+  <div class="grid">
+    <!-- 시스템 상태 -->
+    <div class="card">
+      <h2><span class="icon">📊</span> 시스템 상태</h2>
+      <div class="status-row">
+        <span class="status-label">네트워크</span>
+        <span class="status-value" id="sys-network">-</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">웹훅 URL</span>
+        <span class="status-value" id="sys-webhook">-</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">자동 알림</span>
+        <span class="status-value" id="sys-auto-notify">-</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">어르신 이름</span>
+        <span class="status-value info" id="sys-senior">-</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">자녀 이름</span>
+        <span class="status-value info" id="sys-child">-</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">목표 횟수</span>
+        <span class="status-value info" id="sys-target">-</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">운동 이력 수</span>
+        <span class="status-value info" id="sys-history-count">-</span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="refreshStatus()">🔄 새로고침</button>
+        <button class="btn btn-outline" onclick="openApp()">🚀 앱 열기</button>
+      </div>
+    </div>
+
+    <!-- 웹훅 테스트 -->
+    <div class="card">
+      <h2><span class="icon">📡</span> 웹훅 테스트</h2>
+      <p style="color:#888; font-size:13px; margin-bottom:12px;">Make 웹훅으로 테스트 알림을 전송합니다.</p>
+      <div class="actions">
+        <button class="btn btn-success" id="btn-test-webhook" onclick="testWebhook()">🧪 테스트 알림 전송</button>
+        <button class="btn btn-warning" onclick="testSimulation()">🎭 시뮬레이션 테스트</button>
+      </div>
+      <div class="result-area" id="webhook-result"></div>
+    </div>
+
+    <!-- 웹훅 전송 로그 -->
+    <div class="card">
+      <h2><span class="icon">📋</span> 웹훅 전송 로그</h2>
+      <div class="log-area" id="webhook-log">
+        <div class="empty-state">전송 로그가 없습니다</div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="refreshLogs()">🔄 로그 새로고침</button>
+        <button class="btn btn-danger" onclick="clearLogs()">🗑️ 로그 삭제</button>
+      </div>
+    </div>
+
+    <!-- 운동 이력 -->
+    <div class="card">
+      <h2><span class="icon">🏋️</span> 운동 이력</h2>
+      <div id="history-list">
+        <div class="empty-state">운동 이력이 없습니다</div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="refreshHistory()">🔄 새로고침</button>
+        <button class="btn btn-danger" onclick="clearHistory()">🗑️ 전체 삭제</button>
+      </div>
+    </div>
+
+    <!-- 빠른 설정 -->
+    <div class="card">
+      <h2><span class="icon">⚡</span> 빠른 테스트 설정</h2>
+      <p style="color:#888; font-size:13px; margin-bottom:12px;">테스트 시 목표 횟수를 줄여 빠르게 완주할 수 있습니다.</p>
+      <div class="actions">
+        <button class="btn btn-warning" onclick="setQuickTest(3)">🎯 3회로 설정</button>
+        <button class="btn btn-outline" onclick="setQuickTest(5)">5회</button>
+        <button class="btn btn-outline" onclick="setQuickTest(10)">10회 (기본)</button>
+      </div>
+      <div class="result-area" id="quick-result"></div>
+    </div>
+
+    <!-- localStorage 관리 -->
+    <div class="card">
+      <h2><span class="icon">💾</span> 데이터 관리</h2>
+      <p style="color:#888; font-size:13px; margin-bottom:12px;">실버스텝 관련 localStorage 데이터를 관리합니다.</p>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="exportData()">📦 데이터 내보내기</button>
+        <button class="btn btn-danger" onclick="resetAll()">⚠️ 전체 초기화</button>
+      </div>
+      <div class="result-area" id="data-result"></div>
+    </div>
+  </div>
+
+  <script>
+    // ============================
+    // 시스템 상태 확인
+    // ============================
+    function refreshStatus() {
+      // 네트워크
+      const netEl = document.getElementById('sys-network');
+      if (navigator.onLine) {
+        netEl.innerHTML = '<span class="badge online">온라인</span>';
+      } else {
+        netEl.innerHTML = '<span class="badge offline">오프라인</span>';
+      }
+
+      // localStorage 설정 읽기
+      const webhookUrl = localStorage.getItem('silverstep_webhook_url') || '';
+      const seniorName = localStorage.getItem('silverstep_senior_name') || '어르신';
+      const childName = localStorage.getItem('silverstep_child_name') || '자녀';
+      const targetCount = localStorage.getItem('silverstep_target_count') || '10';
+      const autoNotify = localStorage.getItem('silverstep_auto_notify') === 'true';
+
+      const webhookEl = document.getElementById('sys-webhook');
+      if (webhookUrl) {
+        webhookEl.textContent = webhookUrl.substring(0, 40) + (webhookUrl.length > 40 ? '...' : '');
+        webhookEl.className = 'status-value ok';
+      } else {
+        webhookEl.textContent = '미설정 (시뮬레이션 모드)';
+        webhookEl.className = 'status-value warn';
+      }
+
+      const autoEl = document.getElementById('sys-auto-notify');
+      autoEl.textContent = autoNotify ? '활성화' : '비활성화';
+      autoEl.className = autoNotify ? 'status-value ok' : 'status-value warn';
+
+      document.getElementById('sys-senior').textContent = seniorName;
+      document.getElementById('sys-child').textContent = childName;
+      document.getElementById('sys-target').textContent = targetCount + '회';
+
+      // 운동 이력 수
+      try {
+        const historyRaw = localStorage.getItem('silverstep_exercise_history');
+        const records = historyRaw ? JSON.parse(historyRaw) : [];
+        document.getElementById('sys-history-count').textContent = records.length + '건';
+      } catch {
+        document.getElementById('sys-history-count').textContent = '0건';
+      }
+
+      // 시간
+      document.getElementById('current-time').textContent = new Date().toLocaleString('ko-KR');
+
+      refreshLogs();
+      refreshHistory();
+    }
+
+    // ============================
+    // 웹훅 테스트
+    // ============================
+    async function testWebhook() {
+      const btn = document.getElementById('btn-test-webhook');
+      const resultEl = document.getElementById('webhook-result');
+      btn.disabled = true;
+      resultEl.className = 'result-area show info';
+      resultEl.textContent = '전송 중...';
+
+      const webhookUrl = localStorage.getItem('silverstep_webhook_url') || '';
+
+      if (!webhookUrl) {
+        resultEl.className = 'result-area show error';
+        resultEl.textContent = '❌ 웹훅 URL이 설정되지 않았습니다. 앱 설정에서 URL을 입력하세요.';
+        btn.disabled = false;
+        return;
+      }
+
+      const testPayload = {
+        seniorName: localStorage.getItem('silverstep_senior_name') || '어르신',
+        childName: localStorage.getItem('silverstep_child_name') || '자녀',
+        exerciseName: '테스트',
+        exerciseIcon: '🧪',
+        totalReps: 0,
+        duration: '0초',
+        date: new Date().toLocaleDateString('ko-KR'),
+        time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: new Date().toISOString(),
+        isTest: true,
+        message: '[실버스텝] 테스트 알림입니다. 연동이 정상적으로 동작합니다! ✅',
+      };
+
+      try {
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(testPayload),
+        });
+
+        if (response.ok || response.status === 200 || response.status === 202) {
+          resultEl.className = 'result-area show success';
+          resultEl.textContent = `✅ 전송 성공! (HTTP ${response.status})`;
+        } else {
+          resultEl.className = 'result-area show error';
+          resultEl.textContent = `❌ 전송 실패 (HTTP ${response.status}: ${response.statusText})`;
+        }
+      } catch (err) {
+        // CORS 에러일 수 있음 - no-cors 재시도
+        try {
+          await fetch(webhookUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(testPayload),
+          });
+          resultEl.className = 'result-area show success';
+          resultEl.textContent = '✅ 전송 완료 (no-cors 모드, 응답 확인 불가)';
+        } catch (e2) {
+          resultEl.className = 'result-area show error';
+          resultEl.textContent = `❌ 전송 실패: ${err.message}`;
+        }
+      }
+      btn.disabled = false;
+    }
+
+    function testSimulation() {
+      const resultEl = document.getElementById('webhook-result');
+      resultEl.className = 'result-area show info';
+      resultEl.textContent = '🎭 시뮬레이션 모드: 웹훅 URL을 설정하지 않으면 앱에서 자동으로 시뮬레이션 모드로 동작합니다. 전송 로그에 "simulated: true"로 기록됩니다.';
+    }
+
+    // ============================
+    // 전송 로그
+    // ============================
+    function refreshLogs() {
+      const container = document.getElementById('webhook-log');
+      try {
+        const raw = localStorage.getItem('silverstep_webhook_log');
+        const logs = raw ? JSON.parse(raw) : [];
+
+        if (logs.length === 0) {
+          container.innerHTML = '<div class="empty-state">전송 로그가 없습니다</div>';
+          return;
+        }
+
+        container.innerHTML = logs.map(log => {
+          const time = new Date(log.timestamp).toLocaleString('ko-KR');
+          const cls = log.success ? (log.simulated ? 'warn' : 'success') : 'error';
+          const status = log.success
+            ? (log.simulated ? '시뮬레이션' : '성공')
+            : '실패';
+          return `<div class="log-entry ${cls}">
+            <span class="timestamp">${time}</span>
+            [${status}] ${log.exerciseName || '테스트'} ${log.totalReps}회 - ${log.message}
+          </div>`;
+        }).join('');
+      } catch {
+        container.innerHTML = '<div class="empty-state">로그 파싱 오류</div>';
+      }
+    }
+
+    function clearLogs() {
+      if (confirm('웹훅 전송 로그를 삭제하시겠습니까?')) {
+        localStorage.removeItem('silverstep_webhook_log');
+        refreshLogs();
+      }
+    }
+
+    // ============================
+    // 운동 이력
+    // ============================
+    function refreshHistory() {
+      const container = document.getElementById('history-list');
+      try {
+        const raw = localStorage.getItem('silverstep_exercise_history');
+        const records = raw ? JSON.parse(raw) : [];
+
+        if (records.length === 0) {
+          container.innerHTML = '<div class="empty-state">운동 이력이 없습니다</div>';
+          return;
+        }
+
+        container.innerHTML = records.slice(0, 20).map(r => {
+          const time = new Date(r.timestamp).toLocaleString('ko-KR');
+          const durMin = Math.floor((r.durationSeconds || 0) / 60);
+          const durSec = (r.durationSeconds || 0) % 60;
+          const durText = durMin > 0 ? `${durMin}분 ${durSec}초` : `${durSec}초`;
+          const notifyBadge = r.notificationSent
+            ? '<span class="notify-badge sent">알림 ✓</span>'
+            : '<span class="notify-badge not-sent">미전송</span>';
+
+          return `<div class="history-item">
+            <div class="exercise-info">
+              <span class="exercise-icon">${r.exerciseIcon || '🏃'}</span>
+              <div>
+                <div>${r.exerciseName} · ${r.totalReps}/${r.targetReps}회</div>
+                <div class="exercise-details">${time} · ${durText}</div>
+              </div>
+            </div>
+            ${notifyBadge}
+          </div>`;
+        }).join('');
+      } catch {
+        container.innerHTML = '<div class="empty-state">이력 파싱 오류</div>';
+      }
+    }
+
+    function clearHistory() {
+      if (confirm('운동 이력을 전체 삭제하시겠습니까?')) {
+        localStorage.removeItem('silverstep_exercise_history');
+        refreshHistory();
+        refreshStatus();
+      }
+    }
+
+    // ============================
+    // 빠른 설정
+    // ============================
+    function setQuickTest(count) {
+      localStorage.setItem('silverstep_target_count', String(count));
+      const resultEl = document.getElementById('quick-result');
+      resultEl.className = 'result-area show success';
+      resultEl.textContent = `✅ 목표 횟수가 ${count}회로 설정되었습니다. 앱을 새로고침하면 반영됩니다.`;
+      refreshStatus();
+    }
+
+    // ============================
+    // 데이터 관리
+    // ============================
+    function exportData() {
+      const keys = [
+        'silverstep_webhook_url',
+        'silverstep_senior_name',
+        'silverstep_child_name',
+        'silverstep_target_count',
+        'silverstep_auto_notify',
+        'silverstep_webhook_log',
+        'silverstep_exercise_history',
+      ];
+
+      const data = {};
+      keys.forEach(key => {
+        const val = localStorage.getItem(key);
+        if (val) {
+          try { data[key] = JSON.parse(val); }
+          catch { data[key] = val; }
+        }
+      });
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `silverstep_data_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      const resultEl = document.getElementById('data-result');
+      resultEl.className = 'result-area show success';
+      resultEl.textContent = '✅ 데이터가 JSON 파일로 내보내졌습니다.';
+    }
+
+    function resetAll() {
+      if (confirm('⚠️ 모든 실버스텝 데이터를 삭제하시겠습니까?\n(웹훅 URL, 이름, 운동 이력 등 모두 삭제)')) {
+        const keys = [
+          'silverstep_webhook_url',
+          'silverstep_senior_name',
+          'silverstep_child_name',
+          'silverstep_target_count',
+          'silverstep_auto_notify',
+          'silverstep_webhook_log',
+          'silverstep_exercise_history',
+        ];
+        keys.forEach(key => localStorage.removeItem(key));
+
+        const resultEl = document.getElementById('data-result');
+        resultEl.className = 'result-area show success';
+        resultEl.textContent = '✅ 전체 데이터가 초기화되었습니다.';
+        refreshStatus();
+      }
+    }
+
+    // ============================
+    // 앱 열기
+    // ============================
+    function openApp() {
+      window.open('../src/index.html', '_blank');
+    }
+
+    // 네트워크 상태 실시간 업데이트
+    window.addEventListener('online', refreshStatus);
+    window.addEventListener('offline', refreshStatus);
+
+    // 초기 로드
+    refreshStatus();
+    // 10초마다 시간 업데이트
+    setInterval(() => {
+      document.getElementById('current-time').textContent = new Date().toLocaleString('ko-KR');
+    }, 10000);
+  </script>
+</body>
+</html>

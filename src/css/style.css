@@ -892,6 +892,33 @@ body {
   align-items: center;
   justify-content: center;
   gap: var(--spacing-sm);
+  position: relative;
+}
+
+.notify-btn-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  transition: opacity 0.3s ease;
+}
+
+.notify-button.sending .notify-btn-content {
+  opacity: 0;
+}
+
+.notify-spinner {
+  display: none;
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.notify-button.sending .notify-spinner {
+  display: block;
 }
 
 .notify-button:hover {
@@ -903,10 +930,43 @@ body {
   transform: scale(0.97);
 }
 
+.notify-button:disabled {
+  cursor: default;
+  transform: none;
+}
+
 .notify-button.sent {
   background: var(--accent-green);
   box-shadow: var(--shadow-glow-green);
   cursor: default;
+}
+
+.notify-button.failed {
+  background: var(--accent-red);
+  box-shadow: 0 4px 24px rgba(239, 83, 80, 0.25);
+  cursor: pointer;
+}
+
+/* 알림 상태 메시지 */
+.notify-status {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-align: center;
+  min-height: 24px;
+  transition: opacity 0.4s ease;
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.notify-status.success {
+  color: var(--accent-green);
+}
+
+.notify-status.error {
+  color: var(--accent-red);
+}
+
+.notify-status.simulated {
+  color: var(--accent-gold);
 }
 
 .restart-button {
@@ -1001,7 +1061,7 @@ body {
    ======================== */
 .debug-panel {
   position: fixed;
-  top: var(--spacing-md);
+  top: 80px;
   right: var(--spacing-md);
   background: rgba(255, 255, 255, 0.92);
   padding: var(--spacing-md);
@@ -1046,6 +1106,292 @@ body {
   border: none;
   border-top: 1px solid rgba(61, 48, 40, 0.08);
   margin: var(--spacing-sm) 0;
+}
+
+/* ========================
+   Settings Button
+   ======================== */
+.settings-button {
+  position: fixed;
+  top: var(--spacing-lg);
+  right: var(--spacing-lg);
+  z-index: 50;
+  width: 52px;
+  height: 52px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: white;
+  font-size: 26px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s ease;
+  pointer-events: auto;
+  line-height: 1;
+}
+
+.settings-button:hover {
+  transform: scale(1.1) rotate(30deg);
+  box-shadow: var(--shadow-lg);
+}
+
+.settings-button:active {
+  transform: scale(0.95);
+}
+
+/* ========================
+   Settings Modal
+   ======================== */
+.settings-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  background: rgba(61, 48, 40, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+.settings-modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.settings-modal {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  width: 90%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-xl);
+  border: var(--border-light);
+  animation: modalSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  -webkit-overflow-scrolling: touch;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-bottom: 1px solid rgba(61, 48, 40, 0.06);
+  position: sticky;
+  top: 0;
+  background: var(--bg-primary);
+  z-index: 1;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.settings-title {
+  font-size: var(--font-size-md);
+  font-weight: 900;
+  color: var(--text-primary);
+}
+
+.settings-close {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: rgba(61, 48, 40, 0.06);
+  font-size: 20px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.settings-close:hover {
+  background: rgba(61, 48, 40, 0.12);
+  color: var(--text-primary);
+}
+
+.settings-body {
+  padding: var(--spacing-lg) var(--spacing-xl);
+}
+
+.settings-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-section-title {
+  font-size: var(--font-size-sm);
+  font-weight: 900;
+  color: var(--accent-coral);
+  margin-bottom: var(--spacing-md);
+  letter-spacing: -0.01em;
+}
+
+.settings-field {
+  margin-bottom: var(--spacing-md);
+}
+
+.settings-field:last-child {
+  margin-bottom: 0;
+}
+
+.settings-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.settings-input {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+  border: 2px solid rgba(61, 48, 40, 0.1);
+  border-radius: var(--radius-md);
+  background: white;
+  color: var(--text-primary);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  outline: none;
+}
+
+.settings-input:focus {
+  border-color: var(--accent-coral);
+  box-shadow: 0 0 0 3px rgba(255, 112, 67, 0.15);
+}
+
+.settings-input::placeholder {
+  color: rgba(139, 122, 107, 0.5);
+}
+
+.settings-select {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+  font-weight: 700;
+  border: 2px solid rgba(61, 48, 40, 0.1);
+  border-radius: var(--radius-md);
+  background: white;
+  color: var(--text-primary);
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%238B7A6B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 20px;
+  padding-right: 48px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.settings-select:focus {
+  border-color: var(--accent-coral);
+  box-shadow: 0 0 0 3px rgba(255, 112, 67, 0.15);
+}
+
+.settings-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: var(--spacing-xs);
+  line-height: 1.4;
+}
+
+.settings-test-button {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  font-family: var(--font-family);
+  background: white;
+  border: 2px solid rgba(61, 48, 40, 0.1);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.settings-test-button:hover {
+  background: var(--bg-secondary);
+  border-color: rgba(255, 183, 77, 0.4);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-test-button:active {
+  transform: translateY(0);
+}
+
+.settings-test-result {
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  min-height: 0;
+  transition: all 0.3s ease;
+}
+
+.settings-test-result.success {
+  background: var(--accent-green-bg);
+  color: var(--accent-green);
+}
+
+.settings-test-result.error {
+  background: rgba(239, 83, 80, 0.1);
+  color: var(--accent-red);
+}
+
+.settings-test-result.info {
+  background: rgba(66, 165, 245, 0.1);
+  color: var(--accent-blue);
+}
+
+.settings-footer {
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-top: 1px solid rgba(61, 48, 40, 0.06);
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-primary);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.settings-save-button {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-md);
+  font-weight: 900;
+  font-family: var(--font-family);
+  background: var(--gradient-warm);
+  border: none;
+  border-radius: var(--radius-lg);
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: var(--shadow-glow-coral);
+}
+
+.settings-save-button:hover {
+  transform: scale(1.03);
+  box-shadow: 0 8px 32px rgba(255, 112, 67, 0.3);
+}
+
+.settings-save-button:active {
+  transform: scale(0.97);
 }
 
 /* ========================
@@ -1123,6 +1469,16 @@ body {
 
 .fade-in {
   animation: fadeInUp 0.6s ease-out forwards;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes modalSlideUp {
+  from { transform: translateY(30px) scale(0.97); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 /* ========================
@@ -1313,4 +1669,378 @@ body {
   .message-text {
     font-size: 16px;
   }
+}
+
+/* ========================
+   오프라인 배너
+   ======================== */
+.offline-banner {
+  position: fixed;
+  top: -60px;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: linear-gradient(135deg, #EF5350, #FF7043);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  font-family: var(--font-family);
+  z-index: 9999;
+  transition: top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 4px 16px rgba(239, 83, 80, 0.3);
+}
+
+.offline-banner.active {
+  top: 0;
+}
+
+.offline-icon {
+  font-size: 20px;
+  animation: pulse-icon 2s ease-in-out infinite;
+}
+
+@keyframes pulse-icon {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ========================
+   토글 스위치
+   ======================== */
+.settings-toggle-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.settings-toggle-field .settings-label {
+  margin-bottom: 0;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 56px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #E0D6CC;
+  border-radius: 30px;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 24px;
+  width: 24px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--accent-green);
+  box-shadow: 0 0 12px rgba(76, 175, 80, 0.3);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(26px);
+}
+
+.toggle-switch input:focus + .toggle-slider {
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+}
+
+/* ========================
+   오늘의 운동 요약 (완료 화면)
+   ======================== */
+.today-summary {
+  margin-top: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--bg-glass-warm);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: var(--radius-md);
+  border: var(--border-light);
+  animation: fadeSlideUp 0.6s ease 0.5s both;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.today-summary-title {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-sm);
+  text-align: center;
+  font-weight: 700;
+}
+
+.today-summary-stats {
+  display: flex;
+  justify-content: space-around;
+  gap: var(--spacing-sm);
+}
+
+.today-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.today-stat-value {
+  font-size: var(--font-size-lg);
+  font-weight: 900;
+  color: var(--accent-coral);
+  line-height: 1;
+}
+
+.today-stat-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+/* 알림 상태 텍스트 */
+.notify-status.simulated {
+  color: var(--accent-gold);
+}
+
+/* ========================
+   SOS 버튼 (4주차 현장 안전)
+   ======================== */
+.sos-button {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #EF5350 0%, #C62828 100%);
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 16px;
+  font-weight: 900;
+  font-family: var(--font-family);
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(239, 83, 80, 0.4);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  line-height: 1.1;
+  transition: transform 0.2s, box-shadow 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.sos-button.visible {
+  display: flex;
+  animation: sosPulse 3s ease-in-out infinite;
+}
+
+.sos-button:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 10px rgba(239, 83, 80, 0.3);
+}
+
+.sos-button-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.sos-button-label {
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+@keyframes sosPulse {
+  0%, 100% {
+    box-shadow: 0 4px 20px rgba(239, 83, 80, 0.4);
+  }
+  50% {
+    box-shadow: 0 4px 30px rgba(239, 83, 80, 0.6), 0 0 0 8px rgba(239, 83, 80, 0.1);
+  }
+}
+
+/* SOS 확인 모달 */
+.sos-confirm-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.sos-confirm-overlay.active {
+  display: flex;
+  animation: fadeIn 0.2s ease;
+}
+
+.sos-confirm-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow-xl);
+}
+
+.sos-confirm-icon {
+  font-size: 56px;
+  margin-bottom: 12px;
+}
+
+.sos-confirm-title {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.sos-confirm-desc {
+  font-size: 16px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.sos-confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sos-btn-stop {
+  padding: 16px;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: var(--font-family);
+  color: white;
+  background: linear-gradient(135deg, #EF5350, #C62828);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.sos-btn-resume {
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--font-family);
+  color: var(--accent-green);
+  background: rgba(76, 175, 80, 0.08);
+  border: 2px solid rgba(76, 175, 80, 0.2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+/* ========================
+   안전 타이머 경고 (10분)
+   ======================== */
+.safety-warning {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #FF7043, #FFB74D);
+  color: white;
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-size: 18px;
+  font-weight: 700;
+  z-index: 900;
+  box-shadow: var(--shadow-lg);
+  display: none;
+  text-align: center;
+  max-width: 90%;
+}
+
+.safety-warning.active {
+  display: block;
+  animation: slideDown 0.4s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ========================
+   3m 거리 폰트 최적화 강화 (4주차)
+   ======================== */
+@media (min-width: 320px) {
+  .count-number {
+    font-size: clamp(100px, 30vw, 180px);
+  }
+
+  .message-text {
+    font-size: clamp(20px, 5vw, 36px);
+  }
+
+  .status-text {
+    font-size: clamp(16px, 4vw, 28px);
+  }
+
+  .exercise-type {
+    font-size: clamp(20px, 5vw, 32px);
+  }
+
+  .count-target {
+    font-size: clamp(24px, 6vw, 40px);
+  }
+
+  .timer-text {
+    font-size: clamp(18px, 4.5vw, 30px);
+  }
+}
+
+/* ========================
+   자동 시작 모드 스킵 애니메이션
+   ======================== */
+.start-screen.auto-start-skip {
+  animation: autoStartFadeOut 0.8s ease forwards;
+}
+
+@keyframes autoStartFadeOut {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.95); pointer-events: none; }
 }

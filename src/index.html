@@ -36,6 +36,12 @@
       <div class="camera-vignette"></div>
     </div>
 
+    <!-- 오프라인 배너 -->
+    <div class="offline-banner" id="offline-banner">
+      <span class="offline-icon">📡</span>
+      <span class="offline-text">인터넷 연결이 끊겼습니다</span>
+    </div>
+
     <!-- ========================
          UI 오버레이
          ======================== -->
@@ -79,6 +85,11 @@
          시작 화면
          ======================== -->
     <div class="start-screen" id="start-screen">
+      <!-- 설정 버튼 -->
+      <button class="settings-button" id="settings-button" title="설정">
+        ⚙️
+      </button>
+
       <div class="app-logo">
         <span class="app-logo-icon">🚶‍♂️</span>
         <h1 class="app-title">실버스텝</h1>
@@ -171,11 +182,35 @@
       <!-- 버튼 그룹 -->
       <div class="complete-actions">
         <button class="notify-button" id="notify-button">
-          📱 자녀에게 알림 보내기
+          <span class="notify-btn-content" id="notify-btn-content">
+            <span class="notify-icon">📱</span>
+            <span class="notify-label">자녀에게 알림 보내기</span>
+          </span>
+          <span class="notify-spinner" id="notify-spinner"></span>
         </button>
+        <div class="notify-status" id="notify-status"></div>
         <button class="restart-button" id="restart-button">
           다시 운동하기
         </button>
+      </div>
+
+      <!-- 오늘의 운동 요약 -->
+      <div class="today-summary" id="today-summary">
+        <h3 class="today-summary-title">📊 오늘의 운동</h3>
+        <div class="today-summary-stats">
+          <div class="today-stat">
+            <span class="today-stat-value" id="today-sessions">0</span>
+            <span class="today-stat-label">회 운동</span>
+          </div>
+          <div class="today-stat">
+            <span class="today-stat-value" id="today-total-reps">0</span>
+            <span class="today-stat-label">총 횟수</span>
+          </div>
+          <div class="today-stat">
+            <span class="today-stat-value" id="today-total-time">0초</span>
+            <span class="today-stat-label">총 시간</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -222,6 +257,140 @@
       </div>
     </div>
 
+    <!-- ========================
+         SOS 버튼 (운동 중 안전)
+         ======================== -->
+    <button class="sos-button" id="sos-button">
+      <span class="sos-button-icon">🆘</span>
+      <span class="sos-button-label">멈춤</span>
+    </button>
+
+    <!-- 안전 타이머 경고 -->
+    <div class="safety-warning" id="safety-warning">
+      ⏰ 10분이 지났습니다. 잠시 쉬어가세요!
+    </div>
+
+  </div>
+
+  <!-- ========================
+       SOS 확인 모달
+       ======================== -->
+  <div class="sos-confirm-overlay" id="sos-confirm-overlay">
+    <div class="sos-confirm-card">
+      <div class="sos-confirm-icon">🤚</div>
+      <div class="sos-confirm-title">운동을 중단할까요?</div>
+      <div class="sos-confirm-desc">
+        괜찮으세요? 잠시 쉬었다가<br>다시 시작할 수 있어요.
+      </div>
+      <div class="sos-confirm-actions">
+        <button class="sos-btn-stop" id="sos-btn-stop">🛑 운동 중단하기</button>
+        <button class="sos-btn-resume" id="sos-btn-resume">✅ 계속 운동하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================
+       설정 모달
+       ======================== -->
+  <div class="settings-modal-overlay" id="settings-modal-overlay">
+    <div class="settings-modal" id="settings-modal">
+      <div class="settings-header">
+        <h2 class="settings-title">⚙️ 설정</h2>
+        <button class="settings-close" id="settings-close">✕</button>
+      </div>
+
+      <div class="settings-body">
+        <!-- 알림 연동 섹션 -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">📡 알림 연동 (Make 웹훅)</h3>
+          <div class="settings-field">
+            <label class="settings-label" for="setting-webhook-url">웹훅 URL</label>
+            <input
+              type="url"
+              class="settings-input"
+              id="setting-webhook-url"
+              placeholder="https://hook.make.com/..."
+              autocomplete="off"
+            >
+            <p class="settings-hint">Make(Integromat) 시나리오의 웹훅 URL을 입력하세요</p>
+          </div>
+        </div>
+
+        <!-- 이름 설정 섹션 -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">👤 이름 설정</h3>
+          <div class="settings-field">
+            <label class="settings-label" for="setting-senior-name">어르신 이름</label>
+            <input
+              type="text"
+              class="settings-input"
+              id="setting-senior-name"
+              placeholder="예: 홍길동"
+            >
+          </div>
+          <div class="settings-field">
+            <label class="settings-label" for="setting-child-name">자녀 이름</label>
+            <input
+              type="text"
+              class="settings-input"
+              id="setting-child-name"
+              placeholder="예: 홍영희"
+            >
+          </div>
+        </div>
+
+        <!-- 운동 설정 섹션 -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">🏋️ 운동 설정</h3>
+          <div class="settings-field">
+            <label class="settings-label" for="setting-target-count">목표 운동 횟수</label>
+            <select class="settings-select" id="setting-target-count">
+              <option value="3">3회 (테스트용)</option>
+              <option value="5">5회</option>
+              <option value="10" selected>10회</option>
+              <option value="15">15회</option>
+              <option value="20">20회</option>
+            </select>
+          </div>
+          <div class="settings-field settings-toggle-field">
+            <label class="settings-label" for="setting-auto-notify">운동 완료 시 자동 알림</label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="setting-auto-notify">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <p class="settings-hint">활성화하면 운동 완료 시 자동으로 자녀에게 알림을 보냅니다</p>
+        </div>
+
+        <!-- 자동 시작 설정 -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">🚀 자동 시작</h3>
+          <div class="settings-field settings-toggle-field">
+            <label class="settings-label" for="setting-auto-start">앱 실행 시 자동 시작</label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="setting-auto-start">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <p class="settings-hint">활성화하면 앱을 열 때 바로 카메라가 켜지고 운동을 시작합니다.<br>⚠️ 최초 1회는 수동으로 시작하여 카메라 권한을 획득해 주세요.</p>
+        </div>
+
+        <!-- 테스트 알림 -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">🧪 테스트</h3>
+          <button class="settings-test-button" id="settings-test-button">
+            테스트 알림 전송
+          </button>
+          <div class="settings-test-result" id="settings-test-result"></div>
+        </div>
+      </div>
+
+      <div class="settings-footer">
+        <button class="settings-save-button" id="settings-save-button">
+          💾 저장하기
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- 앱 메인 로직 (ES Module) -->

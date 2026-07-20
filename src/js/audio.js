@@ -253,6 +253,11 @@ AudioManager.MESSAGES = Object.freeze({
   // 무릎 올리기 전용
   KNEE_RAISE_START:     '무릎을 번갈아 높이 올려주세요.',
   KNEE_RAISE_ENCOURAGE: '무릎을 좀 더 높이 올려보세요. 잘 하고 계세요!',
+
+  // SOS / 안전 (4주차)
+  SOS_CONFIRM:          '괜찮으세요? 잠시 쉬어가세요.',
+  SAFETY_TIMER:         '10분이 지났습니다. 물을 한 잔 마시고 쉬어가세요.',
+  SOS_RESUMED:          '다시 시작합니다. 천천히 해 주세요.',
 });
 
 /**

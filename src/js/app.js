@@ -13,6 +13,8 @@ import { MediaPipePoseDetector } from './pose-mediapipe.js';
 import { AudioManager } from './audio.js';
 import { ExerciseCounter } from './counter.js';
 import { ExerciseType, getExerciseConfig } from './exercises.js';
+import { WebhookManager } from './webhook.js';
+import { ExerciseHistory } from './history.js';
 
 // ============================
 // 앱 상태 정의
@@ -32,6 +34,8 @@ class SilverStepApp {
     this.detector = null;
     this.audio = null;
     this.counter = null;
+    this.webhook = null;
+    this.history = null;
 
     // 현재 선택된 운동
     this.currentExercise = ExerciseType.MANSE;
@@ -40,9 +44,15 @@ class SilverStepApp {
     // DOM 요소
     this.dom = {};
 
-    // 설정
+    // 웹훅 매니저 초기화 (설정 로드)
+    this.webhook = new WebhookManager();
+
+    // 운동 이력 매니저 초기화
+    this.history = new ExerciseHistory();
+
+    // 설정 (웹훅 매니저에서 목표 횟수 로드)
     this.config = {
-      targetCount: 10,      // 목표 운동 횟수
+      targetCount: this.webhook.targetCount,
       milestones: [5],       // 격려 메시지 트리거
       countdownSeconds: 3,   // 카운트다운 시간
       poseHoldTime: 1500,    // 포즈 유지 시간 (ms) - 안심위치 확인용
@@ -62,6 +72,16 @@ class SilverStepApp {
     // 포즈 미감지 추적
     this._lastPoseDetectedTime = null;
     this._poseLostWarned = false;
+
+    // 네트워크 상태
+    this._isOnline = navigator.onLine;
+
+    // 현재 운동 기록 ID (알림 상태 업데이트용)
+    this._currentRecordId = null;
+
+    // 안전 타이머 (10분)
+    this._safetyTimerTimeout = null;
+    this._safetyTimerFired = false;
   }
 
   /**
@@ -97,6 +117,18 @@ class SilverStepApp {
       this.dom.errorRetryButton.addEventListener('click', () => this._retryFromError());
     }
 
+    // 설정 모달 이벤트 바인딩
+    this._bindSettingsModal();
+
+    // 목표 횟수 UI 초기 반영
+    this._applyTargetCount(this.config.targetCount);
+
+    // 네트워크 상태 감지 초기화
+    this._initNetworkDetection();
+
+    // SOS 버튼 이벤트 바인딩
+    this._bindSOS();
+
     // 초기 상태 설정
     this._setState(AppState.IDLE);
 
@@ -117,6 +149,13 @@ class SilverStepApp {
       this._mediaPipeReady = true;
       this._updateMessage('운동을 선택하고 시작 버튼을 눌러주세요');
       console.log('[App] 초기화 완료');
+
+      // 자동 시작 모드 체크
+      if (this.webhook.autoStart) {
+        console.log('[App] 자동 시작 모드 활성화 — 자동으로 운동 시작');
+        this.dom.startScreen.classList.add('auto-start-skip');
+        setTimeout(() => this.start(), 1000);
+      }
     } catch (error) {
       console.error('[App] MediaPipe 초기화 실패:', error);
       this._mediaPipeReady = false;
@@ -157,6 +196,10 @@ class SilverStepApp {
 
     // 시작 화면 숨기기
     this.dom.startScreen.classList.add('hidden');
+    // 설정 버튼 숨기기 (fixed이므로 별도 처리)
+    if (this.dom.settingsButton) {
+      this.dom.settingsButton.style.display = 'none';
+    }
 
     // 인사 상태로 전환
     this._setState(AppState.GREETING);
@@ -165,6 +208,9 @@ class SilverStepApp {
     // 인사 완료 → 포즈 대기
     this._setState(AppState.WAITING_POSE);
     this._updateMessage(this._exerciseConfig.waitingMessage || '초록색 위치에 서 주세요');
+
+    // SOS 버튼 표시
+    this._showSOS(true);
   }
 
   /**
@@ -190,13 +236,24 @@ class SilverStepApp {
 
     // 알림 버튼 초기화
     if (this.dom.notifyButton) {
-      this.dom.notifyButton.classList.remove('sent');
-      this.dom.notifyButton.innerHTML = '📱 자녀에게 알림 보내기';
+      this.dom.notifyButton.classList.remove('sent', 'failed', 'sending');
       this.dom.notifyButton.disabled = false;
+      const content = this.dom.notifyButton.querySelector('.notify-btn-content');
+      if (content) {
+        content.querySelector('.notify-icon').textContent = '📱';
+        content.querySelector('.notify-label').textContent = '자녀에게 알림 보내기';
+      }
+    }
+    if (this.dom.notifyStatus) {
+      this.dom.notifyStatus.textContent = '';
+      this.dom.notifyStatus.className = 'notify-status';
     }
 
     this._updateCount(0);
     this._updateProgress(0);
+
+    // SOS 버튼 표시
+    this._showSOS(true);
 
     // 다시 인사부터
     this._setState(AppState.GREETING);
@@ -317,6 +374,9 @@ class SilverStepApp {
     // 타이머 시작
     this._startTimer();
 
+    // 안전 타이머 시작 (10분)
+    this._startSafetyTimer();
+
     // 운동별 시작 안내
     if (this.currentExercise === ExerciseType.KNEE_RAISE) {
       await this.audio.speak(AudioManager.MESSAGES.KNEE_RAISE_START);
@@ -415,10 +475,35 @@ class SilverStepApp {
     // 타이머 중지
     this._stopTimer();
 
+    // 안전 타이머 중지
+    this._stopSafetyTimer();
+
+    // SOS 버튼 숨기기
+    this._showSOS(false);
+
     // 운동 시간 계산
     const duration = this._exerciseStartTime
       ? Math.round((Date.now() - this._exerciseStartTime) / 1000)
       : 0;
+
+    // 운동 결과 데이터 저장 (알림 전송 시 사용)
+    this._lastExerciseData = {
+      exerciseName: this._exerciseConfig.name,
+      exerciseIcon: this._exerciseConfig.icon,
+      totalReps: count,
+      durationSeconds: duration,
+    };
+
+    // 운동 이력 저장
+    const record = this.history.addRecord({
+      exerciseName: this._exerciseConfig.name,
+      exerciseIcon: this._exerciseConfig.icon,
+      totalReps: count,
+      targetReps: this.config.targetCount,
+      durationSeconds: duration,
+      notificationSent: false,
+    });
+    this._currentRecordId = record.id;
 
     // 완료 효과음
     await this.audio.playCompleteSound();
@@ -429,8 +514,15 @@ class SilverStepApp {
     this.dom.completeDuration.textContent = this._formatDuration(duration);
     this.dom.completeScreen.classList.add('active');
 
-    // TODO: 카카오톡 알림 웹훅 트리거 (3주차)
-    console.log('[App] TODO: 카카오톡 알림 발송');
+    // 오늘의 운동 요약 업데이트
+    this._updateTodaySummary();
+
+    // 자동 알림 전송 (설정된 경우)
+    if (this.webhook.autoNotify) {
+      console.log('[App] 자동 알림 전송 실행');
+      // 살짝 딜레이 후 자동 전송 (UI가 보이고 나서)
+      setTimeout(() => this._sendNotification(), 800);
+    }
   }
 
   /**
@@ -480,33 +572,402 @@ class SilverStepApp {
   }
 
   // ============================
-  // 자녀 알림 (3주차 웹훅 대비)
+  // 자녀 알림 (Make 웹훅 연동)
   // ============================
 
   /**
-   * 자녀에게 알림 전송 (3주차에 실제 웹훅 연동)
+   * 자녀에게 알림 전송 (Make 웹훅 또는 시뮬레이션)
    * @private
    */
   async _sendNotification() {
     const btn = this.dom.notifyButton;
+    const statusEl = this.dom.notifyStatus;
     if (!btn || btn.disabled) return;
 
+    // 오프라인 체크
+    if (!this._isOnline) {
+      if (statusEl) {
+        statusEl.textContent = '❌ 인터넷 연결을 확인해주세요';
+        statusEl.className = 'notify-status error';
+      }
+      return;
+    }
+
+    // 전송 중 상태
     btn.disabled = true;
-    btn.innerHTML = '📨 전송 중...';
+    btn.classList.remove('sent', 'failed');
+    btn.classList.add('sending');
+    if (statusEl) {
+      statusEl.textContent = '';
+      statusEl.className = 'notify-status';
+    }
 
-    // TODO: 3주차에 Make(Integromat) 웹훅 URL로 실제 전송
-    // const webhookUrl = 'https://hook.make.com/your-webhook-id';
-    // await fetch(webhookUrl, { method: 'POST', body: JSON.stringify({ ... }) });
+    try {
+      // 운동 결과 데이터가 없으면 기본값
+      const exerciseData = this._lastExerciseData || {
+        exerciseName: this._exerciseConfig.name,
+        exerciseIcon: this._exerciseConfig.icon,
+        totalReps: this.counter.count,
+        durationSeconds: 0,
+      };
 
-    // 시뮬레이션: 1.5초 후 전송 완료
-    await this._delay(1500);
+      // 웹훅 전송 (실제 또는 시뮬레이션)
+      const result = await this.webhook.sendExerciseComplete(exerciseData);
 
-    btn.classList.add('sent');
-    btn.innerHTML = '✅ 알림을 보냈습니다!';
+      btn.classList.remove('sending');
 
-    await this.audio.speak(AudioManager.MESSAGES.NOTIFY_SENT);
+      if (result.success) {
+        btn.classList.add('sent');
+        const content = btn.querySelector('.notify-btn-content');
+        if (content) {
+          content.querySelector('.notify-icon').textContent = '✅';
+          content.querySelector('.notify-label').textContent = '알림을 보냈습니다!';
+        }
 
-    console.log('[App] 자녀 알림 전송 완료 (시뮬레이션)');
+        if (statusEl) {
+          if (result.simulated) {
+            statusEl.textContent = '⚠️ 시뮬레이션 모드 (설정에서 웹훅 URL을 입력하세요)';
+            statusEl.className = 'notify-status simulated';
+          } else {
+            statusEl.textContent = '✅ 카카오톡 알림이 전송되었습니다';
+            statusEl.className = 'notify-status success';
+          }
+        }
+
+        await this.audio.speak(AudioManager.MESSAGES.NOTIFY_SENT);
+        console.log('[App] 자녀 알림 전송 완료:', result.message);
+
+        // 운동 이력에 알림 상태 업데이트
+        if (this._currentRecordId) {
+          this.history.updateNotificationStatus(this._currentRecordId, true);
+        }
+      } else {
+        // 전송 실패
+        btn.classList.add('failed');
+        btn.disabled = false; // 재시도 가능
+        const content = btn.querySelector('.notify-btn-content');
+        if (content) {
+          content.querySelector('.notify-icon').textContent = '⚠️';
+          content.querySelector('.notify-label').textContent = '전송 실패 - 다시 시도';
+        }
+
+        if (statusEl) {
+          statusEl.textContent = `❌ ${result.message}`;
+          statusEl.className = 'notify-status error';
+        }
+
+        console.warn('[App] 자녀 알림 전송 실패:', result.message);
+      }
+    } catch (error) {
+      btn.classList.remove('sending');
+      btn.classList.add('failed');
+      btn.disabled = false;
+      const content = btn.querySelector('.notify-btn-content');
+      if (content) {
+        content.querySelector('.notify-icon').textContent = '⚠️';
+        content.querySelector('.notify-label').textContent = '전송 실패 - 다시 시도';
+      }
+
+      if (statusEl) {
+        statusEl.textContent = '❌ 네트워크 오류가 발생했습니다';
+        statusEl.className = 'notify-status error';
+      }
+
+      console.error('[App] 알림 전송 에러:', error);
+    }
+  }
+
+  // ============================
+  // SOS 긴급 중단 (4주차)
+  // ============================
+
+  /**
+   * SOS 버튼 이벤트 바인딩
+   * @private
+   */
+  _bindSOS() {
+    const sosBtn = document.getElementById('sos-button');
+    const confirmOverlay = document.getElementById('sos-confirm-overlay');
+    const stopBtn = document.getElementById('sos-btn-stop');
+    const resumeBtn = document.getElementById('sos-btn-resume');
+
+    if (sosBtn) {
+      sosBtn.addEventListener('click', () => {
+        // SOS 확인 모달 표시
+        if (confirmOverlay) confirmOverlay.classList.add('active');
+        // 음성 안내
+        this.audio.speak(AudioManager.MESSAGES.SOS_CONFIRM);
+      });
+    }
+
+    if (stopBtn) {
+      stopBtn.addEventListener('click', async () => {
+        // 모달 닫기
+        if (confirmOverlay) confirmOverlay.classList.remove('active');
+
+        // 운동 중단 → 완료 화면으로
+        this._stopTimer();
+        this._stopSafetyTimer();
+        this._showSOS(false);
+
+        const count = this.counter.count;
+        const duration = this._exerciseStartTime
+          ? Math.round((Date.now() - this._exerciseStartTime) / 1000)
+          : 0;
+
+        // 이력 저장 (중단 마크)
+        this.history.addRecord({
+          exerciseName: this._exerciseConfig.name + ' (중단)',
+          exerciseIcon: '🆘',
+          totalReps: count,
+          targetReps: this.config.targetCount,
+          durationSeconds: duration,
+          notificationSent: false,
+        });
+
+        // SOS 알림 전송 (설정된 경우)
+        this.webhook.sendSOSAlert();
+
+        this._setState(AppState.COMPLETE);
+
+        // 완료 화면 표시
+        this.dom.completeTotalReps.textContent = count;
+        this.dom.completeDuration.textContent = this._formatDuration(duration);
+        this.dom.completeScreen.classList.add('active');
+        this._updateTodaySummary();
+
+        console.log('[App] SOS 운동 중단');
+      });
+    }
+
+    if (resumeBtn) {
+      resumeBtn.addEventListener('click', () => {
+        // 모달 닫고 계속
+        if (confirmOverlay) confirmOverlay.classList.remove('active');
+        this.audio.speak(AudioManager.MESSAGES.SOS_RESUMED);
+        console.log('[App] SOS 취소 — 운동 계속');
+      });
+    }
+  }
+
+  /**
+   * SOS 버튼 표시/숨김
+   * @private
+   */
+  _showSOS(visible) {
+    const btn = document.getElementById('sos-button');
+    if (btn) {
+      if (visible) {
+        btn.classList.add('visible');
+      } else {
+        btn.classList.remove('visible');
+      }
+    }
+  }
+
+  // ============================
+  // 안전 타이머 (10분 경고)
+  // ============================
+
+  /**
+   * 10분 안전 타이머 시작
+   * @private
+   */
+  _startSafetyTimer() {
+    this._safetyTimerFired = false;
+    this._stopSafetyTimer();
+
+    this._safetyTimerTimeout = setTimeout(() => {
+      this._safetyTimerFired = true;
+      console.log('[App] 안전 타이머 발동 (10분)');
+
+      // 경고 배너 표시
+      const warning = document.getElementById('safety-warning');
+      if (warning) {
+        warning.classList.add('active');
+        setTimeout(() => warning.classList.remove('active'), 8000);
+      }
+
+      // 음성 경고
+      this.audio.speak(AudioManager.MESSAGES.SAFETY_TIMER);
+    }, 10 * 60 * 1000); // 10분
+  }
+
+  /**
+   * 안전 타이머 중지
+   * @private
+   */
+  _stopSafetyTimer() {
+    if (this._safetyTimerTimeout) {
+      clearTimeout(this._safetyTimerTimeout);
+      this._safetyTimerTimeout = null;
+    }
+    const warning = document.getElementById('safety-warning');
+    if (warning) warning.classList.remove('active');
+  }
+
+  // ============================
+  // 설정 모달
+  // ============================
+
+  /**
+   * 설정 모달 이벤트 바인딩
+   * @private
+   */
+  _bindSettingsModal() {
+    // 설정 버튼 (열기)
+    if (this.dom.settingsButton) {
+      this.dom.settingsButton.addEventListener('click', () => this._openSettings());
+    }
+
+    // 닫기 버튼
+    if (this.dom.settingsClose) {
+      this.dom.settingsClose.addEventListener('click', () => this._closeSettings());
+    }
+
+    // 오버레이 클릭으로 닫기
+    if (this.dom.settingsOverlay) {
+      this.dom.settingsOverlay.addEventListener('click', (e) => {
+        if (e.target === this.dom.settingsOverlay) {
+          this._closeSettings();
+        }
+      });
+    }
+
+    // 저장 버튼
+    if (this.dom.settingsSaveButton) {
+      this.dom.settingsSaveButton.addEventListener('click', () => this._saveSettings());
+    }
+
+    // 테스트 알림 버튼
+    if (this.dom.settingsTestButton) {
+      this.dom.settingsTestButton.addEventListener('click', () => this._sendTestNotification());
+    }
+  }
+
+  /**
+   * 설정 모달 열기
+   * @private
+   */
+  _openSettings() {
+    // 현재 설정값을 입력 필드에 반영
+    const settings = this.webhook.getSettings();
+
+    if (this.dom.settingWebhookUrl) {
+      this.dom.settingWebhookUrl.value = settings.webhookUrl;
+    }
+    if (this.dom.settingSeniorName) {
+      this.dom.settingSeniorName.value = settings.seniorName === '어르신' ? '' : settings.seniorName;
+    }
+    if (this.dom.settingChildName) {
+      this.dom.settingChildName.value = settings.childName === '자녀' ? '' : settings.childName;
+    }
+    if (this.dom.settingTargetCount) {
+      this.dom.settingTargetCount.value = String(settings.targetCount);
+    }
+    if (this.dom.settingAutoNotify) {
+      this.dom.settingAutoNotify.checked = settings.autoNotify;
+    }
+    if (this.dom.settingAutoStart) {
+      this.dom.settingAutoStart.checked = settings.autoStart;
+    }
+
+    // 테스트 결과 초기화
+    if (this.dom.settingsTestResult) {
+      this.dom.settingsTestResult.textContent = '';
+      this.dom.settingsTestResult.className = 'settings-test-result';
+    }
+
+    // 모달 표시
+    this.dom.settingsOverlay.classList.add('active');
+  }
+
+  /**
+   * 설정 모달 닫기
+   * @private
+   */
+  _closeSettings() {
+    this.dom.settingsOverlay.classList.remove('active');
+  }
+
+  /**
+   * 설정 저장
+   * @private
+   */
+  _saveSettings() {
+    const newSettings = {
+      webhookUrl: this.dom.settingWebhookUrl?.value || '',
+      seniorName: this.dom.settingSeniorName?.value || '',
+      childName: this.dom.settingChildName?.value || '',
+      targetCount: this.dom.settingTargetCount?.value || '10',
+      autoNotify: this.dom.settingAutoNotify?.checked || false,
+      autoStart: this.dom.settingAutoStart?.checked || false,
+    };
+
+    this.webhook.saveSettings(newSettings);
+
+    // 목표 횟수 업데이트
+    const newTargetCount = parseInt(newSettings.targetCount, 10) || 10;
+    this._applyTargetCount(newTargetCount);
+
+    // 모달 닫기
+    this._closeSettings();
+
+    // 저장 확인 메시지
+    this._updateMessage('✅ 설정이 저장되었습니다');
+    console.log('[App] 설정 저장 완료');
+  }
+
+  /**
+   * 목표 횟수 적용
+   * @private
+   */
+  _applyTargetCount(targetCount) {
+    this.config.targetCount = targetCount;
+
+    // 마일스톤 재계산 (절반 지점)
+    const milestone = Math.round(targetCount / 2);
+    this.config.milestones = milestone > 0 && milestone < targetCount ? [milestone] : [];
+
+    // 카운터 업데이트
+    if (this.counter) {
+      this.counter.targetCount = targetCount;
+      this.counter.milestones = this.config.milestones;
+    }
+
+    // UI 업데이트
+    if (this.dom.countTarget) {
+      this.dom.countTarget.textContent = `/ ${targetCount}`;
+    }
+    if (this.dom.progressText) {
+      this.dom.progressText.textContent = `0 / ${targetCount}`;
+    }
+  }
+
+  /**
+   * 테스트 알림 전송
+   * @private
+   */
+  async _sendTestNotification() {
+    const resultEl = this.dom.settingsTestResult;
+    if (!resultEl) return;
+
+    // 먼저 현재 입력값을 임시 저장
+    const tempUrl = this.dom.settingWebhookUrl?.value || '';
+    this.webhook.saveSettings({ webhookUrl: tempUrl });
+
+    resultEl.textContent = '전송 중...';
+    resultEl.className = 'settings-test-result info';
+
+    const result = await this.webhook.sendTestNotification();
+
+    if (result.success) {
+      resultEl.textContent = `✅ ${result.message}`;
+      resultEl.className = 'settings-test-result success';
+    } else {
+      resultEl.textContent = `❌ ${result.message}`;
+      resultEl.className = 'settings-test-result error';
+    }
   }
 
   // ============================
@@ -647,6 +1108,7 @@ class SilverStepApp {
 
       // 카운트
       countNumber: document.getElementById('count-number'),
+      countTarget: document.getElementById('count-target'),
 
       // 메시지
       messageDisplay: document.getElementById('message-display'),
@@ -666,11 +1128,35 @@ class SilverStepApp {
       completeDuration: document.getElementById('complete-duration'),
       restartButton: document.getElementById('restart-button'),
       notifyButton: document.getElementById('notify-button'),
+      notifyStatus: document.getElementById('notify-status'),
 
       // 에러 화면
       errorScreen: document.getElementById('error-screen'),
       errorMessage: document.getElementById('error-message'),
       errorRetryButton: document.getElementById('error-retry-button'),
+
+      // 설정 모달
+      settingsButton: document.getElementById('settings-button'),
+      settingsOverlay: document.getElementById('settings-modal-overlay'),
+      settingsClose: document.getElementById('settings-close'),
+      settingsSaveButton: document.getElementById('settings-save-button'),
+      settingsTestButton: document.getElementById('settings-test-button'),
+      settingsTestResult: document.getElementById('settings-test-result'),
+      settingWebhookUrl: document.getElementById('setting-webhook-url'),
+      settingSeniorName: document.getElementById('setting-senior-name'),
+      settingChildName: document.getElementById('setting-child-name'),
+      settingTargetCount: document.getElementById('setting-target-count'),
+      settingAutoNotify: document.getElementById('setting-auto-notify'),
+      settingAutoStart: document.getElementById('setting-auto-start'),
+
+      // 오프라인 배너
+      offlineBanner: document.getElementById('offline-banner'),
+
+      // 오늘의 운동 요약 (완료 화면)
+      todaySummary: document.getElementById('today-summary'),
+      todaySessions: document.getElementById('today-sessions'),
+      todayTotalReps: document.getElementById('today-total-reps'),
+      todayTotalTime: document.getElementById('today-total-time'),
 
       // 디버그
       debugPanel: document.getElementById('debug-panel'),
@@ -706,6 +1192,66 @@ class SilverStepApp {
   }
 
   // ============================
+  // 네트워크 상태 감지
+  // ============================
+
+  /**
+   * 네트워크 온/오프라인 감지 초기화
+   * @private
+   */
+  _initNetworkDetection() {
+    this._isOnline = navigator.onLine;
+    this._updateOfflineBanner();
+
+    window.addEventListener('online', () => {
+      this._isOnline = true;
+      this._updateOfflineBanner();
+      console.log('[App] 네트워크 연결됨');
+    });
+
+    window.addEventListener('offline', () => {
+      this._isOnline = false;
+      this._updateOfflineBanner();
+      console.log('[App] 네트워크 끊김');
+    });
+  }
+
+  /**
+   * 오프라인 배너 표시/숨김
+   * @private
+   */
+  _updateOfflineBanner() {
+    if (this.dom.offlineBanner) {
+      if (this._isOnline) {
+        this.dom.offlineBanner.classList.remove('active');
+      } else {
+        this.dom.offlineBanner.classList.add('active');
+      }
+    }
+  }
+
+  // ============================
+  // 오늘의 운동 요약
+  // ============================
+
+  /**
+   * 완료 화면에 오늘 운동 요약 업데이트
+   * @private
+   */
+  _updateTodaySummary() {
+    const summary = this.history.getTodaySummary();
+    if (this.dom.todaySessions) {
+      this.dom.todaySessions.textContent = summary.totalSessions;
+    }
+    if (this.dom.todayTotalReps) {
+      this.dom.todayTotalReps.textContent = summary.totalReps;
+    }
+    if (this.dom.todayTotalTime) {
+      this.dom.todayTotalTime.textContent = ExerciseHistory.formatDuration(summary.totalDuration);
+    }
+  }
+
+  // ============================
   // 유틸리티
   // ============================
 
@@ -718,46 +1264,6 @@ class SilverStepApp {
     const s = seconds % 60;
     if (m > 0) return `${m}분 ${s}초`;
     return `${s}초`;
-  }
-
-  /**
-   * 에러 화면 표시
-   * @param {string} message - 에러 메시지
-   * @private
-   */
-  _showError(message) {
-    console.error('[App] 에러 표시:', message);
-    if (this.dom.errorScreen) {
-      if (this.dom.errorMessage) {
-        this.dom.errorMessage.textContent = message;
-      }
-      this.dom.errorScreen.classList.add('active');
-    } else {
-      // 에러 화면이 없으면 메시지로 표시
-      this._updateMessage(`⚠️ ${message}`);
-      alert(message);
-    }
-  }
-
-  /**
-   * 에러에서 재시도
-   * @private
-   */
-  async _retryFromError() {
-    if (this.dom.errorScreen) {
-      this.dom.errorScreen.classList.remove('active');
-    }
-    // 앱 전체 재초기화
-    this._mediaPipeReady = false;
-    this._updateMessage('다시 시도하는 중...');
-    try {
-      await this.detector.init();
-      this._mediaPipeReady = true;
-      this._updateMessage('운동을 선택하고 시작 버튼을 눌러주세요');
-    } catch (error) {
-      console.error('[App] 재시도 실패:', error);
-      this._showError('다시 실패했습니다. 인터넷 연결을 확인하고 페이지를 새로고침해 주세요.');
-    }
   }
 }
 

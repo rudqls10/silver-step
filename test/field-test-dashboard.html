@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="실버스텝 필드 테스트 대시보드 - 현장 관찰 기록 시스템">
+  <title>실버스텝 - 필드 테스트 대시보드</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-dark: #1a1a2e;
+      --bg-card: #16213e;
+      --bg-card-hover: #1c2a4a;
+      --text-primary: #eee;
+      --text-secondary: #888;
+      --accent-coral: #FF7043;
+      --accent-green: #4CAF50;
+      --accent-gold: #FFB74D;
+      --accent-blue: #42A5F5;
+      --accent-red: #EF5350;
+      --accent-purple: #AB47BC;
+      --radius-md: 16px;
+    }
+
+    html, body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    /* ========================
+       Layout
+       ======================== */
+    .dashboard {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 16px 80px;
+    }
+
+    .dash-header {
+      text-align: center;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .dash-header h1 {
+      font-size: 24px;
+      color: var(--accent-gold);
+      margin-bottom: 4px;
+    }
+    .dash-header p { color: var(--text-secondary); font-size: 14px; }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .tab {
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      color: var(--text-secondary);
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .tab.active {
+      color: white;
+      background: rgba(255, 183, 77, 0.15);
+      border-color: var(--accent-gold);
+    }
+    .tab:hover { background: rgba(255,255,255,0.05); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Form */
+    .form-row { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 16px;
+      font-family: inherit;
+      color: var(--text-primary);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--accent-gold);
+    }
+    .form-textarea { min-height: 80px; resize: vertical; }
+
+    .form-row-inline {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-coral { background: var(--accent-coral); color: white; }
+    .btn-green { background: var(--accent-green); color: white; }
+    .btn-blue { background: var(--accent-blue); color: white; }
+    .btn-gold { background: var(--accent-gold); color: #333; }
+    .btn-red { background: var(--accent-red); color: white; }
+    .btn-outline {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .btn-full { display: block; width: 100%; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-group .btn { flex: 1; min-width: 120px; }
+
+    /* Timer */
+    .timer-display {
+      text-align: center;
+      padding: 24px;
+      background: rgba(255,255,255,0.03);
+      border-radius: var(--radius-md);
+      margin-bottom: 16px;
+    }
+    .timer-value {
+      font-size: 56px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      color: var(--accent-gold);
+      letter-spacing: 2px;
+    }
+    .timer-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* Checklist */
+    .checklist { list-style: none; }
+    .checklist li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 15px;
+    }
+    .checklist li:last-child { border-bottom: none; }
+    .checklist input[type="checkbox"] {
+      width: 22px; height: 22px;
+      margin-top: 2px;
+      accent-color: var(--accent-green);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .checklist label { cursor: pointer; line-height: 1.5; }
+
+    /* Event Log */
+    .event-log {
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 12px;
+    }
+    .event-entry {
+      display: flex;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      font-size: 14px;
+      animation: eventSlideIn 0.3s ease;
+    }
+    @keyframes eventSlideIn {
+      from { opacity: 0; transform: translateX(-10px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .event-time {
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+      width: 60px;
+    }
+    .event-tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .event-tag.success { background: rgba(76,175,80,0.2); color: #81C784; }
+    .event-tag.fail { background: rgba(239,83,80,0.2); color: #EF9A9A; }
+    .event-tag.help { background: rgba(255,183,77,0.2); color: #FFB74D; }
+    .event-tag.note { background: rgba(66,165,245,0.2); color: #90CAF9; }
+    .event-msg { flex: 1; }
+
+    /* Child Response Tracker */
+    .response-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .response-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 10px;
+    }
+    .response-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .response-dot.pending { background: var(--text-secondary); }
+    .response-dot.sent { background: var(--accent-gold); }
+    .response-dot.responded { background: var(--accent-green); }
+
+    /* Export Section */
+    .export-preview {
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      padding: 16px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #aaa;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin: 12px 0;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .stat-box {
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--accent-gold);
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge-active { background: rgba(76,175,80,0.2); color: #81C784; }
+    .badge-idle { background: rgba(255,255,255,0.06); color: var(--text-secondary); }
+
+    /* Footer */
+    .export-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--bg-card);
+      padding: 12px 16px;
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      z-index: 100;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .form-row-inline { grid-template-columns: 1fr; }
+      .timer-value { font-size: 40px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <div class="dash-header">
+      <h1>🔬 실버스텝 필드 테스트</h1>
+      <p>현장 관찰 기록 대시보드 · 4주차 현장 검증</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-tab="participant">👤 참여자</button>
+      <button class="tab" data-tab="observe">🔍 관찰 기록</button>
+      <button class="tab" data-tab="checklist">✅ 체크리스트</button>
+      <button class="tab" data-tab="feedback">💬 피드백</button>
+      <button class="tab" data-tab="child">📱 자녀 반응</button>
+      <button class="tab" data-tab="export">📊 결과</button>
+    </div>
+
+    <!-- ========================
+         Tab: Participant Info
+         ======================== -->
+    <div class="tab-panel active" id="panel-participant">
+      <div class="card">
+        <div class="card-title">👤 참여자 정보</div>
+
+        <div class="form-row-inline">
+          <div class="form-row">
+            <label class="form-label" for="p-name">이름 (또는 코드)</label>
+            <input type="text" class="form-input" id="p-name" placeholder="예: 시니어A">
+          </div>
+          <div class="form-row">
+            <label class="form-label" for="p-age">연령대</label>
+            <select class="form-input form-select" id="p-age">
+              <option value="">선택</option>
+              <option value="50대">50대</option>
+              <option value="60대">60대</option>
+              <option value="70대">70대</option>
+              <option value="80대 이상">80대 이상</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row-inline">
+          <div class="form-row">
+            <label class="form-label" for="p-gender">성별</label>
+            <select class="form-input form-select" id="p-gender">
+              <option value="">선택</option>
+              <option value="남">남</option>
+              <option value="여">여</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-label" for="p-mobility">신체 활동 수준</label>
+            <select class="form-input form-select" id="p-mobility">
+              <option value="">선택</option>
+              <option value="상">상 (자주 운동)</option>
+              <option value="중">중 (가끔 운동)</option>
+              <option value="하">하 (거의 안 함)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label" for="p-env">테스트 환경 메모</label>
+          <textarea class="form-input form-textarea" id="p-env" placeholder="거실 크기, 조명, 바닥 재질, 가구 배치 등"></textarea>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label" for="p-device">테스트 기기</label>
+          <input type="text" class="form-input" id="p-device" placeholder="예: 갤럭시 S24, 아이폰 15">
+        </div>
+
+        <button class="btn btn-gold btn-full" id="btn-save-participant">💾 참여자 정보 저장</button>
+      </div>
+    </div>
+
+    <!-- ========================
+         Tab: Observation
+         ======================== -->
+    <div class="tab-panel" id="panel-observe">
+      <div class="card">
+        <div class="card-title">⏱️ 관찰 타이머</div>
+        <div class="timer-display">
+          <div class="timer-value" id="observe-timer">00:00</div>
+          <div class="timer-label" id="observe-timer-label">관찰 시작 전</div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-green" id="btn-observe-start">▶ 관찰 시작</button>
+          <button class="btn btn-red" id="btn-observe-stop" disabled>⏹ 관찰 종료</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📝 이벤트 기록</div>
+        <div class="btn-group" style="margin-bottom: 12px;">
+          <button class="btn btn-green event-btn" data-type="success" data-msg="동작 성공">✅ 성공</button>
+          <button class="btn btn-red event-btn" data-type="fail" data-msg="동작 실패/오류">❌ 실패</button>
+          <button class="btn btn-gold event-btn" data-type="help" data-msg="도움 필요">🆘 도움</button>
+          <button class="btn btn-blue event-btn" data-type="note" data-msg="">📝 메모</button>
+        </div>
+        <div class="event-log" id="event-log">
+          <div style="text-align:center; color:var(--text-secondary); padding:40px 0; font-size: 14px;">
+            관찰을 시작하면 이벤트가 여기에 기록됩니다
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 관찰 통계</div>
+        <div class="stats-grid" id="observe-stats">
+          <div class="stat-box">
+            <div class="stat-value" id="stat-success">0</div>
+            <div class="stat-label">성공</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="stat-fail">0</div>
+            <div class="stat-label">실패</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="stat-help">0</div>
+            <div class="stat-label">도움</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-label">전체</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================
+         Tab: Zero-Touch Checklist
+         ======================== -->
+    <div class="tab-panel" id="panel-checklist">
+      <div class="card">
+        <div class="card-title">✅ Zero-Touch 체크리스트</div>
+        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:16px;">
+          시니어가 <strong>화면 터치 없이</strong> 운동을 완수하는지 관찰하며 체크합니다
+        </p>
+
+        <ul class="checklist" id="zero-touch-checklist">
+          <li>
+            <input type="checkbox" id="zt-1">
+            <label for="zt-1">앱 시작 시 음성 안내를 듣고 반응했는가?</label>
+          </li>
+          <li>
+            <input type="checkbox" id="zt-2">
+            <label for="zt-2">안심 위치(매트/스티커)에 자발적으로 이동했는가?</label>
+          </li>
+          <li>
+            <input type="checkbox" id="zt-3">
+            <label for="zt-3">카운트다운(3-2-1)을 인지했는가?</label>
+          </li>
+          <li>
+            <input type="checkbox" id="zt-4">
+            <label for="zt-4">운동 동작을 정확히 수행했는가?</label>
+          </li>
+          <li>
+            <input type="checkbox" id="zt-5">
+            <label for="zt-5">카운트 증가 시 반응/인지를 보였는가?</label>
+          </li>
+          <li>
+            <input type="checkbox" id="zt-6">
+            <label for="zt-6">격려 메시지(5회)에 반응했는가?</label>
+          </li>
+          <li>
+            <input type="checkbox" id="zt-7">
+            <label for="zt-7">목표 횟수까지 완주했는가?</label>
+          </li>
+          <li>
+            <input type="checkbox" id="zt-8">
+            <label for="zt-8">완료 음성을 인지했는가?</label>
+          </li>
+          <li>
+            <input type="checkbox" id="zt-9">
+            <label for="zt-9">전체 과정에서 화면 터치가 전혀 없었는가?</label>
+          </li>
+          <li>
+            <input type="checkbox" id="zt-10">
+            <label for="zt-10">낙상/위험 상황 없이 안전하게 완료했는가?</label>
+          </li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🏠 환경 체크리스트</div>
+        <ul class="checklist" id="env-checklist">
+          <li>
+            <input type="checkbox" id="env-1">
+            <label for="env-1">3m 거리에서 전신이 카메라에 보이는가?</label>
+          </li>
+          <li>
+            <input type="checkbox" id="env-2">
+            <label for="env-2">조명이 충분한가? (역광 없는가?)</label>
+          </li>
+          <li>
+            <input type="checkbox" id="env-3">
+            <label for="env-3">음성이 3m 거리에서 또렷하게 들리는가?</label>
+          </li>
+          <li>
+            <input type="checkbox" id="env-4">
+            <label for="env-4">바닥이 미끄럽지 않은가?</label>
+          </li>
+          <li>
+            <input type="checkbox" id="env-5">
+            <label for="env-5">주변에 부딪힐 가구가 없는가?</label>
+          </li>
+          <li>
+            <input type="checkbox" id="env-6">
+            <label for="env-6">안심 위치 매트/스티커가 잘 보이는가?</label>
+          </li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 체크리스트 결과</div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value" id="zt-score">0/10</div>
+            <div class="stat-label">Zero-Touch</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="env-score">0/6</div>
+            <div class="stat-label">환경 체크</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================
+         Tab: Qualitative Feedback
+         ======================== -->
+    <div class="tab-panel" id="panel-feedback">
+      <div class="card">
+        <div class="card-title">💬 시니어 인터뷰 기록</div>
+
+        <div class="form-row">
+          <label class="form-label">Q1. 음성 안내가 잘 들렸나요? 이해하기 쉬웠나요?</label>
+          <textarea class="form-input form-textarea" id="fb-q1" placeholder="응답 내용 기록..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">Q2. 운동 동작이 편했나요? 어려운 점은 없었나요?</label>
+          <textarea class="form-input form-textarea" id="fb-q2" placeholder="응답 내용 기록..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">Q3. 화면의 숫자/글씨가 잘 보였나요?</label>
+          <textarea class="form-input form-textarea" id="fb-q3" placeholder="응답 내용 기록..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">Q4. 이 앱을 매일 사용하고 싶으신가요? (1~5점)</label>
+          <div class="btn-group">
+            <button class="btn btn-outline rating-btn" data-q="q4" data-val="1">1점</button>
+            <button class="btn btn-outline rating-btn" data-q="q4" data-val="2">2점</button>
+            <button class="btn btn-outline rating-btn" data-q="q4" data-val="3">3점</button>
+            <button class="btn btn-outline rating-btn" data-q="q4" data-val="4">4점</button>
+            <button class="btn btn-outline rating-btn" data-q="q4" data-val="5">5점</button>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">Q5. 자녀에게 알림이 간다는 것에 대해 어떻게 생각하세요?</label>
+          <textarea class="form-input form-textarea" id="fb-q5" placeholder="응답 내용 기록..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">Q6. 개선되면 좋겠다고 느낀 점이 있나요?</label>
+          <textarea class="form-input form-textarea" id="fb-q6" placeholder="응답 내용 기록..."></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📝 관찰자 메모</div>
+        <div class="form-row">
+          <textarea class="form-input form-textarea" id="fb-observer-note" placeholder="관찰 중 발견한 행동 패턴, 표정, 특이사항 등 자유 기록..." style="min-height:120px;"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================
+         Tab: Child Response
+         ======================== -->
+    <div class="tab-panel" id="panel-child">
+      <div class="card">
+        <div class="card-title">📱 자녀 반응 추적</div>
+        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:16px;">
+          알림톡 전송 후 자녀의 실제 반응을 기록합니다
+        </p>
+
+        <div class="response-timeline" id="child-timeline">
+          <div class="response-item">
+            <div class="response-dot pending" id="dot-notify"></div>
+            <div>
+              <div style="font-weight:700;">알림톡 전송</div>
+              <div style="font-size:13px; color:var(--text-secondary);" id="child-notify-time">대기 중</div>
+            </div>
+            <button class="btn btn-gold" id="btn-child-notify-now" style="margin-left:auto; padding:8px 16px; font-size:13px;">⏱ 지금 기록</button>
+          </div>
+
+          <div class="response-item">
+            <div class="response-dot pending" id="dot-response"></div>
+            <div>
+              <div style="font-weight:700;">자녀 반응 (전화/카톡)</div>
+              <div style="font-size:13px; color:var(--text-secondary);" id="child-response-time">대기 중</div>
+            </div>
+            <button class="btn btn-green" id="btn-child-response-now" style="margin-left:auto; padding:8px 16px; font-size:13px;">⏱ 지금 기록</button>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div class="form-row">
+            <label class="form-label">자녀 반응 유형</label>
+            <div class="btn-group">
+              <button class="btn btn-outline child-response-type" data-type="phone">📞 전화</button>
+              <button class="btn btn-outline child-response-type" data-type="kakao">💬 카카오톡</button>
+              <button class="btn btn-outline child-response-type" data-type="none">❌ 무응답</button>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label class="form-label">자녀 반응 소요 시간</label>
+            <div class="stat-box" style="display:inline-block; padding:12px 20px;">
+              <span class="stat-value" id="child-response-delta" style="font-size:24px;">-</span>
+              <span class="stat-label" style="display:inline; margin-left:8px;">분</span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label class="form-label">자녀 반응 내용 메모</label>
+            <textarea class="form-input form-textarea" id="child-response-note" placeholder="자녀가 전화해서 뭐라고 했는지 등..."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================
+         Tab: Export & Results
+         ======================== -->
+    <div class="tab-panel" id="panel-export">
+      <div class="card">
+        <div class="card-title">📊 테스트 결과 요약</div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value" id="result-zt-score">-</div>
+            <div class="stat-label">Zero-Touch 점수</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="result-env-score">-</div>
+            <div class="stat-label">환경 점수</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="result-events">0</div>
+            <div class="stat-label">이벤트 수</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="result-duration">-</div>
+            <div class="stat-label">총 관찰 시간</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📥 데이터 내보내기</div>
+        <div class="btn-group" style="margin-bottom:12px;">
+          <button class="btn btn-gold" id="btn-export-json">📋 JSON 다운로드</button>
+          <button class="btn btn-blue" id="btn-export-clipboard">📋 클립보드 복사</button>
+        </div>
+        <div class="export-preview" id="export-preview">데이터가 준비되면 여기에 미리보기가 표시됩니다.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🗑️ 데이터 관리</div>
+        <button class="btn btn-red btn-full" id="btn-clear-all">🗑️ 전체 데이터 초기화</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Fixed Export Bar -->
+  <div class="export-bar">
+    <button class="btn btn-outline" id="bar-save">💾 임시 저장</button>
+    <button class="btn btn-gold" id="bar-export">📥 결과 내보내기</button>
+  </div>
+
+  <script>
+    // ============================
+    // Field Test Dashboard
+    // ============================
+
+    class FieldTestDashboard {
+      constructor() {
+        this.STORAGE_KEY = 'silverstep_field_test';
+        this.data = this._loadData();
+        this.observeStartTime = null;
+        this.observeInterval = null;
+        this.events = this.data.events || [];
+        this.ratings = this.data.ratings || {};
+
+        this._bindTabs();
+        this._bindParticipant();
+        this._bindObservation();
+        this._bindChecklist();
+        this._bindFeedback();
+        this._bindChildResponse();
+        this._bindExport();
+        this._restoreState();
+      }
+
+      // ============================
+      // Data Persistence
+      // ============================
+      _loadData() {
+        try {
+          return JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || {};
+        } catch { return {}; }
+      }
+
+      _saveData() {
+        this.data.events = this.events;
+        this.data.ratings = this.ratings;
+        this.data.lastSaved = new Date().toISOString();
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.data));
+      }
+
+      _restoreState() {
+        // Restore participant info
+        if (this.data.participant) {
+          const p = this.data.participant;
+          if (p.name) document.getElementById('p-name').value = p.name;
+          if (p.age) document.getElementById('p-age').value = p.age;
+          if (p.gender) document.getElementById('p-gender').value = p.gender;
+          if (p.mobility) document.getElementById('p-mobility').value = p.mobility;
+          if (p.env) document.getElementById('p-env').value = p.env;
+          if (p.device) document.getElementById('p-device').value = p.device;
+        }
+
+        // Restore event log
+        if (this.events.length > 0) {
+          document.getElementById('event-log').innerHTML = '';
+          this.events.forEach(e => this._renderEvent(e, false));
+          this._updateStats();
+        }
+
+        // Restore checklist
+        if (this.data.checklist) {
+          Object.entries(this.data.checklist).forEach(([id, checked]) => {
+            const el = document.getElementById(id);
+            if (el) el.checked = checked;
+          });
+          this._updateChecklistScores();
+        }
+
+        // Restore feedback
+        if (this.data.feedback) {
+          Object.entries(this.data.feedback).forEach(([id, val]) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+          });
+        }
+
+        // Restore ratings
+        if (this.ratings) {
+          Object.entries(this.ratings).forEach(([q, val]) => {
+            document.querySelectorAll(`.rating-btn[data-q="${q}"]`).forEach(btn => {
+              if (btn.dataset.val === String(val)) {
+                btn.style.background = 'var(--accent-gold)';
+                btn.style.color = '#333';
+              }
+            });
+          });
+        }
+
+        // Restore child response
+        if (this.data.childResponse) {
+          const cr = this.data.childResponse;
+          if (cr.notifyTime) {
+            document.getElementById('child-notify-time').textContent = cr.notifyTime;
+            document.getElementById('dot-notify').classList.replace('pending', 'sent');
+          }
+          if (cr.responseTime) {
+            document.getElementById('child-response-time').textContent = cr.responseTime;
+            document.getElementById('dot-response').classList.replace('pending', 'responded');
+          }
+          if (cr.note) document.getElementById('child-response-note').value = cr.note;
+        }
+      }
+
+      // ============================
+      // Tabs
+      // ============================
+      _bindTabs() {
+        document.querySelectorAll('.tab').forEach(tab => {
+          tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(`panel-${tab.dataset.tab}`).classList.add('active');
+          });
+        });
+      }
+
+      // ============================
+      // Participant
+      // ============================
+      _bindParticipant() {
+        document.getElementById('btn-save-participant').addEventListener('click', () => {
+          this.data.participant = {
+            name: document.getElementById('p-name').value,
+            age: document.getElementById('p-age').value,
+            gender: document.getElementById('p-gender').value,
+            mobility: document.getElementById('p-mobility').value,
+            env: document.getElementById('p-env').value,
+            device: document.getElementById('p-device').value,
+          };
+          this._saveData();
+          alert('참여자 정보가 저장되었습니다.');
+        });
+      }
+
+      // ============================
+      // Observation Timer & Events
+      // ============================
+      _bindObservation() {
+        document.getElementById('btn-observe-start').addEventListener('click', () => this._startObservation());
+        document.getElementById('btn-observe-stop').addEventListener('click', () => this._stopObservation());
+
+        document.querySelectorAll('.event-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const type = btn.dataset.type;
+            const msg = btn.dataset.msg;
+
+            if (type === 'note') {
+              const note = prompt('메모를 입력하세요:');
+              if (note) this._addEvent(type, note);
+            } else {
+              this._addEvent(type, msg);
+            }
+          });
+        });
+      }
+
+      _startObservation() {
+        this.observeStartTime = Date.now();
+        this.data.observeStartTime = this.observeStartTime;
+        document.getElementById('btn-observe-start').disabled = true;
+        document.getElementById('btn-observe-stop').disabled = false;
+        document.getElementById('observe-timer-label').textContent = '관찰 진행 중';
+
+        // Clear default message
+        if (this.events.length === 0) {
+          document.getElementById('event-log').innerHTML = '';
+        }
+
+        this._addEvent('note', '관찰 시작');
+
+        this.observeInterval = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - this.observeStartTime) / 1000);
+          const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+          const s = String(elapsed % 60).padStart(2, '0');
+          document.getElementById('observe-timer').textContent = `${m}:${s}`;
+        }, 1000);
+      }
+
+      _stopObservation() {
+        clearInterval(this.observeInterval);
+        this.observeInterval = null;
+
+        const elapsed = Math.floor((Date.now() - this.observeStartTime) / 1000);
+        this.data.observeDuration = elapsed;
+
+        document.getElementById('btn-observe-start').disabled = false;
+        document.getElementById('btn-observe-stop').disabled = true;
+        document.getElementById('observe-timer-label').textContent = '관찰 종료';
+
+        this._addEvent('note', '관찰 종료');
+        this._saveData();
+      }
+
+      _addEvent(type, msg) {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const elapsed = this.observeStartTime
+          ? `${Math.floor((Date.now() - this.observeStartTime) / 1000)}s`
+          : '-';
+
+        const event = { type, msg, time: timeStr, elapsed, timestamp: now.toISOString() };
+        this.events.push(event);
+        this._renderEvent(event, true);
+        this._updateStats();
+        this._saveData();
+      }
+
+      _renderEvent(event, scrollToBottom) {
+        const log = document.getElementById('event-log');
+        const entry = document.createElement('div');
+        entry.className = 'event-entry';
+        entry.innerHTML = `
+          <span class="event-time">${event.elapsed}</span>
+          <span class="event-tag ${event.type}">${event.type === 'success' ? '✅' : event.type === 'fail' ? '❌' : event.type === 'help' ? '🆘' : '📝'}</span>
+          <span class="event-msg">${event.msg}</span>
+        `;
+        log.appendChild(entry);
+        if (scrollToBottom) log.scrollTop = log.scrollHeight;
+      }
+
+      _updateStats() {
+        const counts = { success: 0, fail: 0, help: 0, total: 0 };
+        this.events.forEach(e => {
+          if (e.type === 'success') counts.success++;
+          else if (e.type === 'fail') counts.fail++;
+          else if (e.type === 'help') counts.help++;
+          counts.total++;
+        });
+        document.getElementById('stat-success').textContent = counts.success;
+        document.getElementById('stat-fail').textContent = counts.fail;
+        document.getElementById('stat-help').textContent = counts.help;
+        document.getElementById('stat-total').textContent = counts.total;
+      }
+
+      // ============================
+      // Checklist
+      // ============================
+      _bindChecklist() {
+        document.querySelectorAll('.checklist input[type="checkbox"]').forEach(cb => {
+          cb.addEventListener('change', () => {
+            if (!this.data.checklist) this.data.checklist = {};
+            this.data.checklist[cb.id] = cb.checked;
+            this._updateChecklistScores();
+            this._saveData();
+          });
+        });
+      }
+
+      _updateChecklistScores() {
+        let ztChecked = 0, envChecked = 0;
+        for (let i = 1; i <= 10; i++) {
+          if (document.getElementById(`zt-${i}`)?.checked) ztChecked++;
+        }
+        for (let i = 1; i <= 6; i++) {
+          if (document.getElementById(`env-${i}`)?.checked) envChecked++;
+        }
+        document.getElementById('zt-score').textContent = `${ztChecked}/10`;
+        document.getElementById('env-score').textContent = `${envChecked}/6`;
+      }
+
+      // ============================
+      // Feedback
+      // ============================
+      _bindFeedback() {
+        // Auto-save textareas
+        document.querySelectorAll('#panel-feedback textarea').forEach(ta => {
+          ta.addEventListener('blur', () => {
+            if (!this.data.feedback) this.data.feedback = {};
+            this.data.feedback[ta.id] = ta.value;
+            this._saveData();
+          });
+        });
+
+        // Rating buttons
+        document.querySelectorAll('.rating-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const q = btn.dataset.q;
+            const val = parseInt(btn.dataset.val);
+            this.ratings[q] = val;
+
+            // Visual feedback
+            document.querySelectorAll(`.rating-btn[data-q="${q}"]`).forEach(b => {
+              b.style.background = 'transparent';
+              b.style.color = 'var(--text-secondary)';
+            });
+            btn.style.background = 'var(--accent-gold)';
+            btn.style.color = '#333';
+            this._saveData();
+          });
+        });
+      }
+
+      // ============================
+      // Child Response
+      // ============================
+      _bindChildResponse() {
+        document.getElementById('btn-child-notify-now').addEventListener('click', () => {
+          const time = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+          if (!this.data.childResponse) this.data.childResponse = {};
+          this.data.childResponse.notifyTime = time;
+          this.data.childResponse.notifyTimestamp = Date.now();
+          document.getElementById('child-notify-time').textContent = time;
+          document.getElementById('dot-notify').classList.replace('pending', 'sent');
+          this._saveData();
+        });
+
+        document.getElementById('btn-child-response-now').addEventListener('click', () => {
+          const time = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+          if (!this.data.childResponse) this.data.childResponse = {};
+          this.data.childResponse.responseTime = time;
+          this.data.childResponse.responseTimestamp = Date.now();
+          document.getElementById('child-response-time').textContent = time;
+          document.getElementById('dot-response').classList.replace('pending', 'responded');
+
+          // Calculate delta
+          if (this.data.childResponse.notifyTimestamp) {
+            const deltaMin = Math.round((Date.now() - this.data.childResponse.notifyTimestamp) / 60000);
+            document.getElementById('child-response-delta').textContent = deltaMin;
+            this.data.childResponse.responseDeltaMin = deltaMin;
+          }
+          this._saveData();
+        });
+
+        document.querySelectorAll('.child-response-type').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.child-response-type').forEach(b => {
+              b.style.background = 'transparent';
+              b.style.color = 'var(--text-secondary)';
+            });
+            btn.style.background = 'var(--accent-blue)';
+            btn.style.color = 'white';
+            if (!this.data.childResponse) this.data.childResponse = {};
+            this.data.childResponse.responseType = btn.dataset.type;
+            this._saveData();
+          });
+        });
+
+        document.getElementById('child-response-note').addEventListener('blur', () => {
+          if (!this.data.childResponse) this.data.childResponse = {};
+          this.data.childResponse.note = document.getElementById('child-response-note').value;
+          this._saveData();
+        });
+      }
+
+      // ============================
+      // Export
+      // ============================
+      _bindExport() {
+        document.getElementById('btn-export-json').addEventListener('click', () => this._exportJSON());
+        document.getElementById('btn-export-clipboard').addEventListener('click', () => this._exportClipboard());
+        document.getElementById('btn-clear-all').addEventListener('click', () => this._clearAll());
+        document.getElementById('bar-save').addEventListener('click', () => {
+          this._collectAllData();
+          this._saveData();
+          alert('임시 저장되었습니다.');
+        });
+        document.getElementById('bar-export').addEventListener('click', () => {
+          // Switch to export tab
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+          document.querySelector('[data-tab="export"]').classList.add('active');
+          document.getElementById('panel-export').classList.add('active');
+          this._prepareExport();
+        });
+      }
+
+      _collectAllData() {
+        // Collect all feedback textareas
+        if (!this.data.feedback) this.data.feedback = {};
+        document.querySelectorAll('#panel-feedback textarea').forEach(ta => {
+          this.data.feedback[ta.id] = ta.value;
+        });
+
+        // Collect child response note
+        if (!this.data.childResponse) this.data.childResponse = {};
+        this.data.childResponse.note = document.getElementById('child-response-note').value;
+      }
+
+      _prepareExport() {
+        this._collectAllData();
+
+        // Update result stats
+        let ztChecked = 0;
+        for (let i = 1; i <= 10; i++) {
+          if (document.getElementById(`zt-${i}`)?.checked) ztChecked++;
+        }
+        let envChecked = 0;
+        for (let i = 1; i <= 6; i++) {
+          if (document.getElementById(`env-${i}`)?.checked) envChecked++;
+        }
+        document.getElementById('result-zt-score').textContent = `${ztChecked}/10`;
+        document.getElementById('result-env-score').textContent = `${envChecked}/6`;
+        document.getElementById('result-events').textContent = this.events.length;
+
+        if (this.data.observeDuration) {
+          const m = Math.floor(this.data.observeDuration / 60);
+          const s = this.data.observeDuration % 60;
+          document.getElementById('result-duration').textContent = `${m}분 ${s}초`;
+        }
+
+        // Show preview
+        const exportData = this._buildExportData();
+        document.getElementById('export-preview').textContent = JSON.stringify(exportData, null, 2);
+      }
+
+      _buildExportData() {
+        this._collectAllData();
+        return {
+          version: '1.0',
+          exportDate: new Date().toISOString(),
+          participant: this.data.participant || {},
+          observation: {
+            duration: this.data.observeDuration || 0,
+            events: this.events,
+          },
+          checklist: this.data.checklist || {},
+          feedback: this.data.feedback || {},
+          ratings: this.ratings,
+          childResponse: this.data.childResponse || {},
+        };
+      }
+
+      _exportJSON() {
+        const exportData = this._buildExportData();
+        const name = this.data.participant?.name || 'unknown';
+        const date = new Date().toISOString().slice(0, 10);
+        const filename = `silverstep_field_test_${name}_${date}.json`;
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      _exportClipboard() {
+        const exportData = this._buildExportData();
+        navigator.clipboard.writeText(JSON.stringify(exportData, null, 2))
+          .then(() => alert('클립보드에 복사되었습니다!'))
+          .catch(() => alert('복사에 실패했습니다. 미리보기에서 직접 복사해 주세요.'));
+      }
+
+      _clearAll() {
+        if (confirm('⚠️ 모든 테스트 데이터가 삭제됩니다. 진행할까요?')) {
+          localStorage.removeItem(this.STORAGE_KEY);
+          location.reload();
+        }
+      }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      new FieldTestDashboard();
+    });
+  </script>
+</body>
+</html>
