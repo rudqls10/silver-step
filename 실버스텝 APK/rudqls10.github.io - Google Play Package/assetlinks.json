@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.silverstep.app",
+        "sha256_cert_fingerprints": ["25:7D:DB:51:CC:11:7D:BF:0C:50:68:E8:91:7A:6C:34:FB:EC:88:14:99:9F:94:F7:12:01:86:14:EB:0A:AE:A3"]
+      }
+    }]
